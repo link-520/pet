@@ -1,30 +1,40 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace LifeRPG.Data
 {
     /// <summary>
-    /// 玩家数据总入口。MVP 阶段不接存档，运行时直接使用假数据。
+    /// 玩家数据总入口。所有 UI 通过 PlayerDataService 修改它。
     /// </summary>
     [Serializable]
     public class PlayerData
     {
-        public string PlayerName;
-        public string PetName;
-        public DimensionSet Dimensions;
+        public string Nickname;
+        public string PetId;
         public DimensionSet TargetDimensions;
-        public List<string> UnlockedEquipments;
-        public List<PlayerEventData> Events;
+        public DimensionSet CurrentDimensions;
+        public DimensionSet TodayDimensions;
+        public List<PlayerEventData> PersonalEvents;
+        public List<string> UnlockedEquipmentIds;
+        public List<string> EquippedEquipmentIds;
+        public string LastSettlementDate;
+        public bool IsInitialized;
+
+        // 当前 UI 选中事件，后续可以移到 Controller 状态里。
         public string SelectedEventId;
 
         public PlayerData()
         {
-            PlayerName = "Player";
-            PetName = "Pet";
-            Dimensions = new DimensionSet();
+            Nickname = "Player";
+            PetId = "pet_default";
             TargetDimensions = new DimensionSet();
-            UnlockedEquipments = new List<string>();
-            Events = new List<PlayerEventData>();
+            CurrentDimensions = new DimensionSet();
+            TodayDimensions = new DimensionSet();
+            PersonalEvents = new List<PlayerEventData>();
+            UnlockedEquipmentIds = new List<string>();
+            EquippedEquipmentIds = new List<string>();
+            LastSettlementDate = string.Empty;
+            IsInitialized = false;
             SelectedEventId = string.Empty;
         }
     }

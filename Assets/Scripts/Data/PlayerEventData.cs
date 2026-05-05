@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace LifeRPG.Data
 {
@@ -9,13 +9,27 @@ namespace LifeRPG.Data
     public class PlayerEventData
     {
         public string EventId;
-        public int CompletedCount;
+        public bool IsInPersonalLibrary;
+        public int TodayCount;
+        public float TodayMinutes;
+        public float TodayScore;
+        public float TotalCount;
+        public float TotalMinutes;
+        public float TotalScore;
+        public bool TodayCompleted;
         public bool IsActive;
 
-        public PlayerEventData(string eventId)
+        public PlayerEventData(string eventId, bool isInPersonalLibrary = true)
         {
             EventId = eventId;
-            CompletedCount = 0;
+            IsInPersonalLibrary = isInPersonalLibrary;
+            TodayCount = 0;
+            TodayMinutes = 0f;
+            TodayScore = 0f;
+            TotalCount = 0f;
+            TotalMinutes = 0f;
+            TotalScore = 0f;
+            TodayCompleted = false;
             IsActive = false;
         }
     }

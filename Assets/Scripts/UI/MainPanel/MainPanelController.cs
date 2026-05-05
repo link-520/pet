@@ -1,4 +1,4 @@
-using LifeRPG.Services;
+﻿using LifeRPG.Services;
 using UnityEngine;
 
 namespace LifeRPG.UI.MainPanel
@@ -20,9 +20,8 @@ namespace LifeRPG.UI.MainPanel
                 view = GetComponent<MainPanelView>();
             }
 
-            // MVP 阶段先在控制器内部创建服务，后续再交给 GameBootstrap 统一注入。
-            eventLibraryService = new EventLibraryService();
-            playerDataService = new PlayerDataService(eventLibraryService);
+            eventLibraryService = EventLibraryService.GetShared();
+            playerDataService = PlayerDataService.GetShared(eventLibraryService);
         }
 
         private void OnEnable()
@@ -49,12 +48,12 @@ namespace LifeRPG.UI.MainPanel
 
         public void RefreshPanel()
         {
-            if (view == null || playerDataService == null || eventLibraryService == null)
+            if (view == null || playerDataService == null)
             {
                 return;
             }
 
-            view.Refresh(playerDataService.GetPlayerData(), eventLibraryService.GetAllEvents());
+            view.Refresh(playerDataService.GetPlayerData(), playerDataService.GetPersonalEvents());
         }
 
         private void HandleEventSelected(string eventId)
@@ -65,7 +64,12 @@ namespace LifeRPG.UI.MainPanel
 
         private void HandleConfirmClicked()
         {
-            playerDataService.ConfirmSelectedEvent();
+            if (view == null || !view.CanSubmitSelectedRecordEvent)
+            {
+                return;
+            }
+
+            playerDataService.RecordEventOnce(playerDataService.GetPlayerData().SelectedEventId);
             RefreshPanel();
         }
     }

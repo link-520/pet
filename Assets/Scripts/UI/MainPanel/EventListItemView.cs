@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using LifeRPG.Data;
 using TMPro;
 using UnityEngine;
@@ -38,9 +38,9 @@ namespace LifeRPG.UI.MainPanel
 
             if (detailText != null)
             {
-                string timeText = definition.DurationMinutes > 0 ? $"{definition.DurationMinutes}min" : "instant";
-                int completedCount = playerEventData != null ? playerEventData.CompletedCount : 0;
-                detailText.text = $"{GetEventTypeName(definition.Type)} / {GetDimensionName(definition.Dimension)} / +{definition.Score} / {timeText} / done {completedCount}";
+                string timeText = definition.RequiredMinutes > 0f ? $"{definition.RequiredMinutes:0.#}min" : "instant";
+                float todayScore = playerEventData != null ? playerEventData.TodayScore : 0f;
+                detailText.text = $"{GetEventTypeName(definition.Type)} / {GetDimensionName(definition.Dimension)} / +{definition.RewardScore:0.#} / {timeText} / 今日 {todayScore:0.#}";
             }
         }
 

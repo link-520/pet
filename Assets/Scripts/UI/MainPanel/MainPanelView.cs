@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using LifeRPG.Data;
 using TMPro;
@@ -30,8 +30,9 @@ namespace LifeRPG.UI.MainPanel
         [SerializeField] private EventListItemView eventItemPrefab;
         [SerializeField] private TMP_Text eventFallbackText;
 
-        [Header("当前状态")]
+        [Header("事件填写")]
         [SerializeField] private TMP_Text currentEventText;
+        [SerializeField] private EventFillPanelView eventFillPanelView;
         [SerializeField] private Button confirmButton;
 
         private readonly List<DimensionBarView> runtimeDimensionBars = new List<DimensionBarView>();
@@ -39,6 +40,8 @@ namespace LifeRPG.UI.MainPanel
 
         public event Action<string> OnEventSelected;
         public event Action OnConfirmClicked;
+
+        public bool CanSubmitSelectedRecordEvent => eventFillPanelView != null && eventFillPanelView.CanSubmitRecordEvent;
 
         private void Awake()
         {
@@ -59,9 +62,9 @@ namespace LifeRPG.UI.MainPanel
 
             RefreshPet(playerData);
             RefreshEquipment(playerData);
-            RefreshDimensions(playerData.Dimensions, playerData.TargetDimensions);
+            RefreshDimensions(playerData.CurrentDimensions, playerData.TargetDimensions, playerData.TodayDimensions);
             RefreshEvents(eventDefinitions, playerData);
-            RefreshCurrentEvent(playerData, eventDefinitions);
+            RefreshEventFill(playerData, eventDefinitions);
         }
 
         private void RefreshPet(PlayerData playerData)
@@ -73,7 +76,7 @@ namespace LifeRPG.UI.MainPanel
 
             if (petNameText != null)
             {
-                petNameText.text = $"{playerData.PlayerName} / {playerData.PetName}";
+                petNameText.text = $"{playerData.Nickname} / {playerData.PetId}";
             }
         }
 
@@ -81,15 +84,15 @@ namespace LifeRPG.UI.MainPanel
         {
             if (equipmentText != null)
             {
-                equipmentText.text = playerData.UnlockedEquipments.Count > 0
-                    ? "已解锁装备\n" + string.Join("\n", playerData.UnlockedEquipments)
+                equipmentText.text = playerData.UnlockedEquipmentIds.Count > 0
+                    ? "已解锁装备\n" + string.Join("\n", playerData.UnlockedEquipmentIds)
                     : "暂无装备";
             }
         }
 
-        private void RefreshDimensions(DimensionSet dimensions, DimensionSet targetDimensions)
+        private void RefreshDimensions(DimensionSet currentDimensions, DimensionSet targetDimensions, DimensionSet todayDimensions)
         {
-            if (dimensions == null)
+            if (currentDimensions == null || targetDimensions == null || todayDimensions == null)
             {
                 return;
             }
@@ -112,12 +115,11 @@ namespace LifeRPG.UI.MainPanel
                 {
                     DimensionBarView bar = Instantiate(dimensionBarPrefab, dimensionRoot);
                     bar.gameObject.SetActive(true);
-                    bar.Refresh(type, dimensions.GetValue(type), targetDimensions.GetValue(type));
+                    bar.Refresh(type, currentDimensions.GetValue(type), targetDimensions.GetValue(type), todayDimensions.GetValue(type));
                     runtimeDimensionBars.Add(bar);
                 }
 
                 HideTemplateIfInRoot(dimensionBarPrefab.gameObject, dimensionRoot);
-
                 return;
             }
 
@@ -126,7 +128,7 @@ namespace LifeRPG.UI.MainPanel
                 if (fixedDimensionBars[i] != null)
                 {
                     DimensionType type = types[i];
-                    fixedDimensionBars[i].Refresh(type, dimensions.GetValue(type), targetDimensions.GetValue(type));
+                    fixedDimensionBars[i].Refresh(type, currentDimensions.GetValue(type), targetDimensions.GetValue(type), todayDimensions.GetValue(type));
                 }
             }
         }
@@ -152,7 +154,6 @@ namespace LifeRPG.UI.MainPanel
                 }
 
                 HideTemplateIfInRoot(eventItemPrefab.gameObject, eventListRoot);
-
                 return;
             }
 
@@ -162,15 +163,30 @@ namespace LifeRPG.UI.MainPanel
             }
         }
 
-        private void RefreshCurrentEvent(PlayerData playerData, IReadOnlyList<EventDefinition> eventDefinitions)
+        private void RefreshEventFill(PlayerData playerData, IReadOnlyList<EventDefinition> eventDefinitions)
         {
-            if (currentEventText == null)
+            EventDefinition selectedEvent = FindEventDefinition(eventDefinitions, playerData.SelectedEventId);
+            PlayerEventData selectedProgress = selectedEvent != null ? FindPlayerEventData(playerData, selectedEvent.Id) : null;
+
+            if (currentEventText != null)
             {
-                return;
+                currentEventText.text = selectedEvent == null ? "当前未选择事件" : $"当前选择：{selectedEvent.Name}";
             }
 
-            EventDefinition selectedEvent = FindEventDefinition(eventDefinitions, playerData.SelectedEventId);
-            currentEventText.text = selectedEvent == null ? "当前未选择事件" : $"当前选择：{selectedEvent.Name}";
+            if (eventFillPanelView != null)
+            {
+                eventFillPanelView.Refresh(selectedEvent, selectedProgress);
+            }
+
+            RefreshConfirmButton(selectedEvent);
+        }
+
+        private void RefreshConfirmButton(EventDefinition selectedEvent)
+        {
+            if (confirmButton != null)
+            {
+                confirmButton.interactable = selectedEvent != null && selectedEvent.Type == LifeRPG.Data.EventType.Record;
+            }
         }
 
         private void OnEventItemSelected(string eventId)
@@ -180,7 +196,7 @@ namespace LifeRPG.UI.MainPanel
 
         private PlayerEventData FindPlayerEventData(PlayerData playerData, string eventId)
         {
-            return playerData.Events.Find(item => item.EventId == eventId);
+            return playerData.PersonalEvents.Find(item => item.EventId == eventId);
         }
 
         private EventDefinition FindEventDefinition(IReadOnlyList<EventDefinition> eventDefinitions, string eventId)
@@ -208,9 +224,9 @@ namespace LifeRPG.UI.MainPanel
             foreach (EventDefinition definition in eventDefinitions)
             {
                 PlayerEventData progress = FindPlayerEventData(playerData, definition.Id);
-                int completedCount = progress != null ? progress.CompletedCount : 0;
-                string timeText = definition.DurationMinutes > 0 ? $"{definition.DurationMinutes}分钟" : "无分钟";
-                lines.Add($"{definition.Name} / {definition.RequiredCount}次 / {timeText} / {definition.Score}分 / 已完成{completedCount}次");
+                float todayScore = progress != null ? progress.TodayScore : 0f;
+                string timeText = definition.RequiredMinutes > 0f ? $"{definition.RequiredMinutes:0.#}分钟" : "无分钟";
+                lines.Add($"{definition.Name} / {definition.RequiredCount}次 / {timeText} / {definition.RewardScore:0.#}分 / 今日{todayScore:0.#}分");
             }
 
             return string.Join("\n", lines);
@@ -263,7 +279,6 @@ namespace LifeRPG.UI.MainPanel
                 return;
             }
 
-            // 如果模板就是场景里放在列表容器下的对象，就隐藏它，只把它当复制模板。
             if (templateObject.transform.IsChildOf(root))
             {
                 templateObject.SetActive(false);
@@ -271,3 +286,4 @@ namespace LifeRPG.UI.MainPanel
         }
     }
 }
+
