@@ -1,25 +1,26 @@
-using System;
+﻿using System;
+using UnityEngine;
 
 namespace LifeRPG.Data
 {
     /// <summary>
-    /// 保存玩家六维分数的简单数据结构。
+    /// 统一表示目标六维、今日六维、个人当前六维。
     /// </summary>
     [Serializable]
     public class DimensionSet
     {
-        public int Body;
-        public int Knowledge;
-        public int Career;
-        public int Relationship;
-        public int Wealth;
-        public int Happiness;
+        public float Body;
+        public float Knowledge;
+        public float Career;
+        public float Relationship;
+        public float Wealth;
+        public float Happiness;
 
         public DimensionSet()
         {
         }
 
-        public DimensionSet(int body, int knowledge, int career, int relationship, int wealth, int happiness)
+        public DimensionSet(float body, float knowledge, float career, float relationship, float wealth, float happiness)
         {
             Body = body;
             Knowledge = knowledge;
@@ -29,10 +30,7 @@ namespace LifeRPG.Data
             Happiness = happiness;
         }
 
-        /// <summary>
-        /// 按六维类型读取分数。
-        /// </summary>
-        public int GetValue(DimensionType type)
+        public float GetValue(DimensionType type)
         {
             switch (type)
             {
@@ -49,14 +47,11 @@ namespace LifeRPG.Data
                 case DimensionType.Happiness:
                     return Happiness;
                 default:
-                    return 0;
+                    return 0f;
             }
         }
 
-        /// <summary>
-        /// 按六维类型设置分数。
-        /// </summary>
-        public void SetValue(DimensionType type, int value)
+        public void SetValue(DimensionType type, float value)
         {
             switch (type)
             {
@@ -81,12 +76,34 @@ namespace LifeRPG.Data
             }
         }
 
-        /// <summary>
-        /// 给某个维度增加分数。
-        /// </summary>
-        public void AddValue(DimensionType type, int amount)
+        public void AddValue(DimensionType type, float amount)
         {
             SetValue(type, GetValue(type) + amount);
+        }
+
+        public void Clear()
+        {
+            Body = 0f;
+            Knowledge = 0f;
+            Career = 0f;
+            Relationship = 0f;
+            Wealth = 0f;
+            Happiness = 0f;
+        }
+
+        public DimensionSet Clone()
+        {
+            return new DimensionSet(Body, Knowledge, Career, Relationship, Wealth, Happiness);
+        }
+
+        public void Clamp(float minValue, float maxValue)
+        {
+            Body = Mathf.Clamp(Body, minValue, maxValue);
+            Knowledge = Mathf.Clamp(Knowledge, minValue, maxValue);
+            Career = Mathf.Clamp(Career, minValue, maxValue);
+            Relationship = Mathf.Clamp(Relationship, minValue, maxValue);
+            Wealth = Mathf.Clamp(Wealth, minValue, maxValue);
+            Happiness = Mathf.Clamp(Happiness, minValue, maxValue);
         }
     }
 }

@@ -1,4 +1,4 @@
-using LifeRPG.Data;
+﻿using LifeRPG.Data;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace LifeRPG.UI.MainPanel
 {
     /// <summary>
-    /// 单个六维显示条。MVP 阶段只显示名称、分数和可选 Slider。
+    /// 单个六维显示条。显示当前六维、目标六维和今日累计值。
     /// </summary>
     public class DimensionBarView : MonoBehaviour
     {
@@ -14,12 +14,17 @@ namespace LifeRPG.UI.MainPanel
         [SerializeField] private TMP_Text valueText;
         [SerializeField] private Slider valueSlider;
 
-        public void Refresh(DimensionType type, int value)
+        public void Refresh(DimensionType type, float value)
         {
-            Refresh(type, value, 0);
+            Refresh(type, value, 0f, 0f);
         }
 
-        public void Refresh(DimensionType type, int value, int targetValue)
+        public void Refresh(DimensionType type, float currentValue, float targetValue)
+        {
+            Refresh(type, currentValue, targetValue, 0f);
+        }
+
+        public void Refresh(DimensionType type, float currentValue, float targetValue, float todayValue)
         {
             if (nameText != null)
             {
@@ -28,15 +33,21 @@ namespace LifeRPG.UI.MainPanel
 
             if (valueText != null)
             {
-                valueText.text = targetValue > 0 ? $"{value}/{targetValue}" : value.ToString();
+                string baseText = targetValue > 0f ? $"当前 {FormatValue(currentValue)} / 目标 {FormatValue(targetValue)}" : $"当前 {FormatValue(currentValue)}";
+                valueText.text = $"{baseText}  今日 +{FormatValue(todayValue)}";
             }
 
             if (valueSlider != null)
             {
-                valueSlider.minValue = 0;
-                valueSlider.maxValue = targetValue > 0 ? targetValue : 100;
-                valueSlider.value = value;
+                valueSlider.minValue = 0f;
+                valueSlider.maxValue = targetValue > 0f ? targetValue : 100f;
+                valueSlider.value = currentValue;
             }
+        }
+
+        private string FormatValue(float value)
+        {
+            return value.ToString("0.#");
         }
 
         private string GetDimensionName(DimensionType type)

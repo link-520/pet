@@ -1,12 +1,15 @@
+﻿using System.Collections.Generic;
 using LifeRPG.Data;
 
 namespace LifeRPG.Services
 {
     /// <summary>
-    /// 玩家数据服务。MVP 阶段只负责创建假数据和提供少量读写方法。
+    /// 玩家数据服务。所有玩家数据修改都从这里进入。
     /// </summary>
     public class PlayerDataService
     {
+        public static PlayerDataService Shared { get; private set; }
+
         private readonly EventLibraryService eventLibraryService;
         private PlayerData playerData;
 
@@ -14,6 +17,16 @@ namespace LifeRPG.Services
         {
             this.eventLibraryService = eventLibraryService;
             playerData = CreateMockPlayerData();
+        }
+
+        public static PlayerDataService GetShared(EventLibraryService eventLibraryService)
+        {
+            if (Shared == null)
+            {
+                Shared = new PlayerDataService(eventLibraryService);
+            }
+
+            return Shared;
         }
 
         public PlayerData GetPlayerData()
@@ -36,46 +49,137 @@ namespace LifeRPG.Services
             return eventLibraryService.GetEventById(playerData.SelectedEventId);
         }
 
-        /// <summary>
-        /// MVP 版确认事件：只增加完成次数，并把事件分数加到对应六维。
-        /// </summary>
-        public void ConfirmSelectedEvent()
+        public List<EventDefinition> GetPersonalEvents()
         {
-            EventDefinition selectedEvent = GetSelectedEvent();
-            if (selectedEvent == null)
+            return eventLibraryService.GetPlayerPersonalEvents(playerData);
+        }
+
+        public List<EventDefinition> GetPersonalEventsByType(EventType type)
+        {
+            List<EventDefinition> result = new List<EventDefinition>();
+            foreach (EventDefinition eventDefinition in GetPersonalEvents())
+            {
+                if (eventDefinition.Type == type)
+                {
+                    result.Add(eventDefinition);
+                }
+            }
+
+            return result;
+        }
+
+        public PlayerEventData GetPlayerEventData(string eventId)
+        {
+            PlayerEventData playerEvent = playerData.PersonalEvents.Find(item => item.EventId == eventId);
+            if (playerEvent == null)
+            {
+                playerEvent = new PlayerEventData(eventId, false);
+                playerData.PersonalEvents.Add(playerEvent);
+            }
+
+            return playerEvent;
+        }
+
+        public void AddEventToPersonalLibrary(string eventId)
+        {
+            if (eventLibraryService.GetEventById(eventId) == null)
             {
                 return;
             }
 
-            PlayerEventData playerEvent = playerData.Events.Find(item => item.EventId == selectedEvent.Id);
-            if (playerEvent == null)
+            PlayerEventData playerEvent = GetPlayerEventData(eventId);
+            playerEvent.IsInPersonalLibrary = true;
+        }
+
+        public void RemoveEventFromPersonalLibrary(string eventId)
+        {
+            PlayerEventData playerEvent = GetPlayerEventData(eventId);
+            playerEvent.IsInPersonalLibrary = false;
+        }
+
+        public bool IsEventInPersonalLibrary(string eventId)
+        {
+            PlayerEventData playerEvent = playerData.PersonalEvents.Find(item => item.EventId == eventId);
+            return playerEvent != null && playerEvent.IsInPersonalLibrary;
+        }
+
+        public void RecordEventOnce(string eventId)
+        {
+            EventDefinition eventDefinition = eventLibraryService.GetEventById(eventId);
+            if (eventDefinition == null || eventDefinition.Type != EventType.Record || !IsEventInPersonalLibrary(eventId))
             {
-                playerEvent = new PlayerEventData(selectedEvent.Id);
-                playerData.Events.Add(playerEvent);
+                return;
             }
 
-            playerEvent.CompletedCount += selectedEvent.RequiredCount;
-            playerData.Dimensions.AddValue(selectedEvent.Dimension, selectedEvent.Score);
+            PlayerEventData playerEvent = GetPlayerEventData(eventId);
+            playerEvent.TodayCount += 1;
+            playerEvent.TodayScore += eventDefinition.RewardScore;
+            playerEvent.TotalCount += 1f;
+            playerEvent.TotalScore += eventDefinition.RewardScore;
+            playerEvent.TodayCompleted = true;
+
+            playerData.TodayDimensions.AddValue(eventDefinition.Dimension, eventDefinition.RewardScore);
+        }
+
+        public void RecordContinuousEvent(string eventId, float elapsedMinutes)
+        {
+            EventDefinition eventDefinition = eventLibraryService.GetEventById(eventId);
+            if (eventDefinition == null || eventDefinition.Type != EventType.Continuous || !IsEventInPersonalLibrary(eventId))
+            {
+                return;
+            }
+
+            float safeMinutes = elapsedMinutes < 0f ? 0f : elapsedMinutes;
+            float score = eventDefinition.RequiredMinutes > 0f
+                ? safeMinutes / eventDefinition.RequiredMinutes * eventDefinition.RewardScore
+                : 0f;
+
+            PlayerEventData playerEvent = GetPlayerEventData(eventId);
+            playerEvent.TodayMinutes += safeMinutes;
+            playerEvent.TodayScore += score;
+            playerEvent.TotalMinutes += safeMinutes;
+            playerEvent.TotalScore += score;
+            playerEvent.TodayCompleted = score > 0f;
+
+            playerData.TodayDimensions.AddValue(eventDefinition.Dimension, score);
+        }
+
+        public void ClearTodayProgress()
+        {
+            playerData.TodayDimensions.Clear();
+
+            foreach (PlayerEventData playerEvent in playerData.PersonalEvents)
+            {
+                playerEvent.TodayCount = 0;
+                playerEvent.TodayMinutes = 0f;
+                playerEvent.TodayScore = 0f;
+                playerEvent.TodayCompleted = false;
+                playerEvent.IsActive = false;
+            }
         }
 
         private PlayerData CreateMockPlayerData()
         {
             PlayerData data = new PlayerData
             {
-                PlayerName = "阿澈",
-                PetName = "豆包",
-                Dimensions = new DimensionSet(32, 18, 12, 24, 9, 28),
-                TargetDimensions = new DimensionSet(50, 40, 35, 35, 25, 45)
+                Nickname = "阿澈",
+                PetId = "pet_doubao",
+                TargetDimensions = new DimensionSet(10f, 6f, 8f, 4f, 10f, 0f),
+                CurrentDimensions = new DimensionSet(10f, 6f, 8f, 4f, 10f, 0f),
+                TodayDimensions = new DimensionSet(),
+                LastSettlementDate = string.Empty,
+                IsInitialized = true,
+                SelectedEventId = "fruit"
             };
 
-            foreach (EventDefinition eventDefinition in eventLibraryService.GetAllEvents())
-            {
-                data.Events.Add(new PlayerEventData(eventDefinition.Id));
-            }
+            data.PersonalEvents.Add(new PlayerEventData("run"));
+            data.PersonalEvents.Add(new PlayerEventData("study"));
+            data.PersonalEvents.Add(new PlayerEventData("fruit"));
+            data.PersonalEvents.Add(new PlayerEventData("date"));
 
-            data.UnlockedEquipments.Add("旧跑鞋：身体 +1");
-            data.UnlockedEquipments.Add("便携笔记本：知识 +1");
-            data.SelectedEventId = "run";
+            data.UnlockedEquipmentIds.Add("equip_old_running_shoes");
+            data.UnlockedEquipmentIds.Add("equip_round_glasses");
+            data.EquippedEquipmentIds.Add("equip_old_running_shoes");
 
             return data;
         }
