@@ -1,0 +1,6 @@
+{
+  "format": "transparent PNG",
+  "icon_size": "256x256",
+  "pet_size": "512x512",
+  "suggested_unity_usage": "Icons use Image components; panels/buttons/bars are better drawn with Unity UI sprites/rounded rectangles or 9-slice assets."
+}
