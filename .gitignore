@@ -11,9 +11,11 @@
 [Mm]emoryCaptures/
 [Rr]ecordings/
 
+
 # =========================================================
 # Unity generated files
 # =========================================================
+MyBuild
 *.csproj
 *.sln
 *.suo
