@@ -5,7 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Diagnostics.Contracts;
 
-public class ImageController : MonoBehaviour, IPointerDownHandler, IDragHandler,IPointerUpHandler
+public class ImageController : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
 {
     [Header("��ק����")]
     public bool enableDrag = true;
