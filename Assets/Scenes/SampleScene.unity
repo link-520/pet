@@ -493,13 +493,13 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 874982382994442770, guid: 812ba412674de3a46bdbc7298dfbe2c1, type: 3}
+      propertyPath: m_text
+      value: "\u5FEB\u4E50"
+      objectReference: {fileID: 0}
     - target: {fileID: 900779217230972814, guid: 812ba412674de3a46bdbc7298dfbe2c1, type: 3}
       propertyPath: m_Name
       value: MainPanelWindow
-      objectReference: {fileID: 0}
-    - target: {fileID: 900779217230972814, guid: 812ba412674de3a46bdbc7298dfbe2c1, type: 3}
-      propertyPath: m_IsActive
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1023937113668633110, guid: 812ba412674de3a46bdbc7298dfbe2c1, type: 3}
       propertyPath: m_AnchorMax.y
@@ -781,10 +781,6 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3362656035596624885, guid: 812ba412674de3a46bdbc7298dfbe2c1, type: 3}
-      propertyPath: m_Name
-      value: CloseButton
-      objectReference: {fileID: 0}
     - target: {fileID: 3983535543976158172, guid: 812ba412674de3a46bdbc7298dfbe2c1, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -952,6 +948,10 @@ PrefabInstance:
     - target: {fileID: 6175048059477421078, guid: 812ba412674de3a46bdbc7298dfbe2c1, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6293507735670603271, guid: 812ba412674de3a46bdbc7298dfbe2c1, type: 3}
+      propertyPath: m_fontStyle
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6353051516503750564, guid: 812ba412674de3a46bdbc7298dfbe2c1, type: 3}
       propertyPath: m_AnchorMax.y
