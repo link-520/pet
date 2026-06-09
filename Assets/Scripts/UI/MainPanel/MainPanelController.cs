@@ -9,6 +9,7 @@ namespace LifeRPG.UI.MainPanel
     public class MainPanelController : MonoBehaviour
     {
         [SerializeField] private MainPanelView view;
+        [SerializeField] private LifeRPG.Core.UIManager uiManager;
 
         private EventLibraryService eventLibraryService;
         private PlayerDataService playerDataService;
@@ -22,6 +23,11 @@ namespace LifeRPG.UI.MainPanel
 
             eventLibraryService = EventLibraryService.GetShared();
             playerDataService = PlayerDataService.GetShared(eventLibraryService);
+
+            if (uiManager == null)
+            {
+                uiManager = FindAnyObjectByType<LifeRPG.Core.UIManager>();
+            }
         }
 
         private void OnEnable()
@@ -30,6 +36,7 @@ namespace LifeRPG.UI.MainPanel
             {
                 view.OnEventSelected += HandleEventSelected;
                 view.OnConfirmClicked += HandleConfirmClicked;
+                view.OnCloseClicked += HandleCloseClicked;
             }
 
             RefreshPanel();
@@ -44,6 +51,7 @@ namespace LifeRPG.UI.MainPanel
 
             view.OnEventSelected -= HandleEventSelected;
             view.OnConfirmClicked -= HandleConfirmClicked;
+            view.OnCloseClicked -= HandleCloseClicked;
         }
 
         public void RefreshPanel()
@@ -71,6 +79,55 @@ namespace LifeRPG.UI.MainPanel
 
             playerDataService.RecordEventOnce(playerDataService.GetPlayerData().SelectedEventId);
             RefreshPanel();
+        }
+
+        public void StartSelectedContinuousEvent()
+        {
+            if (playerDataService == null)
+            {
+                return;
+            }
+
+            playerDataService.StartContinuousEvent(playerDataService.GetPlayerData().SelectedEventId);
+            RefreshPanel();
+        }
+
+        public void FinishActiveContinuousEvent()
+        {
+            if (playerDataService == null)
+            {
+                return;
+            }
+
+            playerDataService.FinishActiveContinuousEvent();
+            RefreshPanel();
+        }
+
+        public void ForceSettleToday()
+        {
+            if (playerDataService == null)
+            {
+                return;
+            }
+
+            playerDataService.ForceSettleToday();
+            RefreshPanel();
+        }
+
+        public void CloseMainPanel()
+        {
+            if (uiManager == null)
+            {
+                Debug.LogWarning("MainPanelController 缺少 UIManager 引用，无法关闭主面板。");
+                return;
+            }
+
+            uiManager.HideMainPanel();
+        }
+
+        private void HandleCloseClicked()
+        {
+            CloseMainPanel();
         }
     }
 }

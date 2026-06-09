@@ -13,14 +13,22 @@ namespace LifeRPG.UI.MainPanel
     {
         [SerializeField] private TMP_Text titleText;
         [SerializeField] private TMP_Text detailText;
+        [SerializeField] private TMP_Text dimensionText;
+        [SerializeField] private TMP_Text timeText;
+        [SerializeField] private TMP_Text scoreText;
         [SerializeField] private Button selectButton;
 
         private string eventId;
+        private Image backgroundImage;
+        private Color normalColor = Color.white;
+        private Color selectedColor = new Color(0.82f, 0.94f, 0.78f, 1f);
 
         public event Action<string> OnSelected;
 
         private void Awake()
         {
+            AutoBindReferences();
+
             if (selectButton != null)
             {
                 selectButton.onClick.AddListener(NotifySelected);
@@ -29,6 +37,7 @@ namespace LifeRPG.UI.MainPanel
 
         public void Refresh(EventDefinition definition, PlayerEventData playerEventData)
         {
+            AutoBindReferences();
             eventId = definition.Id;
 
             if (titleText != null)
@@ -38,9 +47,32 @@ namespace LifeRPG.UI.MainPanel
 
             if (detailText != null)
             {
-                string timeText = definition.RequiredMinutes > 0f ? $"{definition.RequiredMinutes:0.#}min" : "instant";
+                string durationText = definition.RequiredMinutes > 0f ? $"{definition.RequiredMinutes:0.#}min" : "instant";
                 float todayScore = playerEventData != null ? playerEventData.TodayScore : 0f;
-                detailText.text = $"{GetEventTypeName(definition.Type)} / {GetDimensionName(definition.Dimension)} / +{definition.RewardScore:0.#} / {timeText} / 今日 {todayScore:0.#}";
+                detailText.text = $"{GetEventTypeName(definition.Type)} / {GetDimensionName(definition.Dimension)} / +{definition.RewardScore:0.#} / {durationText} / 今日 {todayScore:0.#}";
+            }
+
+            if (dimensionText != null)
+            {
+                dimensionText.text = GetDimensionName(definition.Dimension);
+            }
+
+            if (timeText != null)
+            {
+                timeText.text = definition.RequiredMinutes > 0f ? $"{definition.RequiredMinutes:0.#}min" : "-";
+            }
+
+            if (scoreText != null)
+            {
+                scoreText.text = $"{definition.RewardScore:0.#}";
+            }
+        }
+
+        public void SetSelected(bool selected)
+        {
+            if (backgroundImage != null)
+            {
+                backgroundImage.color = selected ? selectedColor : normalColor;
             }
         }
 
@@ -52,6 +84,70 @@ namespace LifeRPG.UI.MainPanel
             }
 
             OnSelected?.Invoke(eventId);
+        }
+
+        private void AutoBindReferences()
+        {
+            if (selectButton == null)
+            {
+                selectButton = GetComponent<Button>();
+                if (selectButton == null)
+                {
+                    selectButton = gameObject.AddComponent<Button>();
+                }
+            }
+
+            if (backgroundImage == null)
+            {
+                backgroundImage = GetComponent<Image>();
+                if (backgroundImage == null)
+                {
+                    Transform bg = transform.Find("BG");
+                    backgroundImage = bg != null ? bg.GetComponent<Image>() : null;
+                }
+
+                if (backgroundImage != null)
+                {
+                    normalColor = backgroundImage.color;
+                    selectButton.targetGraphic = backgroundImage;
+                }
+            }
+
+            TMP_Text[] texts = GetComponentsInChildren<TMP_Text>(true);
+            foreach (TMP_Text text in texts)
+            {
+                string lowerName = text.gameObject.name.ToLowerInvariant();
+                if (titleText == null && (lowerName == "event" || lowerName.Contains("name")))
+                {
+                    titleText = text;
+                    continue;
+                }
+
+                if (detailText == null && (lowerName == "six" || lowerName == "time" || lowerName == "score"))
+                {
+                    detailText = text;
+                }
+
+                if (dimensionText == null && lowerName == "six")
+                {
+                    dimensionText = text;
+                }
+
+                if (timeText == null && lowerName == "time")
+                {
+                    timeText = text;
+                }
+
+                if (scoreText == null && lowerName == "score")
+                {
+                    scoreText = text;
+                }
+            }
+
+            if (titleText == null && texts.Length > 0)
+            {
+                titleText = texts[0];
+            }
         }
 
         private string GetEventTypeName(LifeRPG.Data.EventType type)

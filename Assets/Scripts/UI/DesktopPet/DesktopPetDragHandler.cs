@@ -1,3 +1,4 @@
+//  挂在PetImage上,拖Image才生效
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -64,13 +65,14 @@ namespace LifeRPG.UI.DesktopPet
                 return;
             }
 
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            RectTransformUtility.ScreenPointToLocalPointInRectangle( // 算鼠标在Rect中的位置
                 parentRect,
                 eventData.position,
                 eventData.pressEventCamera,
                 out Vector2 pointerLocalPosition);
 
-            dragOffset = targetRect.anchoredPosition - pointerLocalPosition;
+
+            dragOffset = targetRect.anchoredPosition - pointerLocalPosition; // 计算偏移，用来保持鼠标和UI元素的相对位置不变
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -92,7 +94,7 @@ namespace LifeRPG.UI.DesktopPet
                 eventData.pressEventCamera,
                 out Vector2 pointerLocalPosition);
 
-            targetRect.anchoredPosition = pointerLocalPosition + dragOffset;
+            targetRect.anchoredPosition = pointerLocalPosition + dragOffset; // 设置桌宠位置为鼠标位置加上偏移
 
             if (constrainToCanvas)
             {
@@ -116,10 +118,11 @@ namespace LifeRPG.UI.DesktopPet
             Vector2 targetSize = targetRect.rect.size;
             Vector2 position = targetRect.anchoredPosition;
 
-            float minX = -canvasSize.x * 0.5f + targetSize.x * 0.5f + edgePadding;
-            float maxX = canvasSize.x * 0.5f - targetSize.x * 0.5f - edgePadding;
-            float minY = -canvasSize.y * 0.5f + targetSize.y * 0.5f + edgePadding;
-            float maxY = canvasSize.y * 0.5f - targetSize.y * 0.5f - edgePadding;
+            float minX = edgePadding;
+            float maxX = canvasSize.x - targetSize.x - edgePadding;
+
+            float minY = edgePadding;
+            float maxY = canvasSize.y - targetSize.y - edgePadding;
 
             position.x = Mathf.Clamp(position.x, minX, maxX);
             position.y = Mathf.Clamp(position.y, minY, maxY);

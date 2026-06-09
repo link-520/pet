@@ -9,6 +9,7 @@ namespace LifeRPG.Core
     {
         [SerializeField] private GameObject desktopPetWindow;
         [SerializeField] private GameObject mainPanelWindow;
+        [SerializeField] private GameObject warehouseWindow;
 
         public void ShowDesktopPet()
         {
@@ -38,6 +39,16 @@ namespace LifeRPG.Core
         public void ShowRecordEventEntry()
         {
             ShowMainPanel();
+        }
+
+        public void ShowWarehouse()
+        {
+            SetWindowVisible(warehouseWindow, true);
+        }
+
+        public void HideWarehouse()
+        {
+            SetWindowVisible(warehouseWindow, false);
         }
 
         private void SetWindowVisible(GameObject window, bool visible)

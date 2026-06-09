@@ -19,6 +19,8 @@ namespace LifeRPG.Data
         public List<string> EquippedEquipmentIds;
         public string LastSettlementDate;
         public bool IsInitialized;
+        public string ActiveContinuousEventId;
+        public long ActiveContinuousEventStartUnixSeconds;
 
         // 当前 UI 选中事件，后续可以移到 Controller 状态里。
         public string SelectedEventId;
@@ -35,6 +37,8 @@ namespace LifeRPG.Data
             EquippedEquipmentIds = new List<string>();
             LastSettlementDate = string.Empty;
             IsInitialized = false;
+            ActiveContinuousEventId = string.Empty;
+            ActiveContinuousEventStartUnixSeconds = 0;
             SelectedEventId = string.Empty;
         }
     }

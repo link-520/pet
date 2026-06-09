@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System;
 using LifeRPG.Data;
 
 namespace LifeRPG.Services
@@ -11,12 +12,22 @@ namespace LifeRPG.Services
         public static PlayerDataService Shared { get; private set; }
 
         private readonly EventLibraryService eventLibraryService;
+        private readonly SaveDataService saveDataService;
+        private readonly DailySettlementService dailySettlementService;
+        private readonly EquipmentService equipmentService;
         private PlayerData playerData;
 
         public PlayerDataService(EventLibraryService eventLibraryService)
         {
             this.eventLibraryService = eventLibraryService;
-            playerData = CreateMockPlayerData();
+            saveDataService = new SaveDataService();
+            dailySettlementService = new DailySettlementService();
+            equipmentService = new EquipmentService(EquipmentLibraryService.GetShared());
+            playerData = saveDataService.Load() ?? CreateDefaultPlayerData();
+            RepairPlayerData();
+            dailySettlementService.SettleIfNeeded(playerData, DateTime.Now);
+            equipmentService.RefreshUnlockedEquipment(playerData);
+            SaveNow();
         }
 
         public static PlayerDataService GetShared(EventLibraryService eventLibraryService)
@@ -37,6 +48,49 @@ namespace LifeRPG.Services
         public void SelectEvent(string eventId)
         {
             playerData.SelectedEventId = eventId;
+            SaveNow();
+        }
+
+        public void InitializePlayer(string nickname, string petId, string dimensionPlanId, List<string> personalEventIds)
+        {
+            playerData.Nickname = string.IsNullOrEmpty(nickname) ? "Player" : nickname;
+            playerData.PetId = string.IsNullOrEmpty(petId) ? "pet_default" : petId;
+            ApplyDimensionPlan(dimensionPlanId, true);
+
+            playerData.PersonalEvents.Clear();
+            if (personalEventIds != null)
+            {
+                foreach (string eventId in personalEventIds)
+                {
+                    AddEventToPersonalLibrary(eventId);
+                }
+            }
+
+            if (playerData.PersonalEvents.Count == 0)
+            {
+                AddDefaultPersonalEvents(playerData);
+            }
+
+            playerData.IsInitialized = true;
+            SaveNow();
+        }
+
+        public bool ApplyDimensionPlan(string dimensionPlanId, bool alsoResetCurrentDimensions = false)
+        {
+            DimensionPlanDefinition plan = DimensionPlanLibraryService.GetShared().GetPlanById(dimensionPlanId);
+            if (plan == null)
+            {
+                return false;
+            }
+
+            playerData.TargetDimensions = plan.TargetDimensions.Clone();
+            if (alsoResetCurrentDimensions)
+            {
+                playerData.CurrentDimensions = plan.TargetDimensions.Clone();
+            }
+
+            SaveNow();
+            return true;
         }
 
         public EventDefinition GetSelectedEvent()
@@ -89,12 +143,14 @@ namespace LifeRPG.Services
 
             PlayerEventData playerEvent = GetPlayerEventData(eventId);
             playerEvent.IsInPersonalLibrary = true;
+            SaveNow();
         }
 
         public void RemoveEventFromPersonalLibrary(string eventId)
         {
             PlayerEventData playerEvent = GetPlayerEventData(eventId);
             playerEvent.IsInPersonalLibrary = false;
+            SaveNow();
         }
 
         public bool IsEventInPersonalLibrary(string eventId)
@@ -119,6 +175,8 @@ namespace LifeRPG.Services
             playerEvent.TodayCompleted = true;
 
             playerData.TodayDimensions.AddValue(eventDefinition.Dimension, eventDefinition.RewardScore);
+            equipmentService.RefreshUnlockedEquipment(playerData);
+            SaveNow();
         }
 
         public void RecordContinuousEvent(string eventId, float elapsedMinutes)
@@ -142,6 +200,62 @@ namespace LifeRPG.Services
             playerEvent.TodayCompleted = score > 0f;
 
             playerData.TodayDimensions.AddValue(eventDefinition.Dimension, score);
+            equipmentService.RefreshUnlockedEquipment(playerData);
+            SaveNow();
+        }
+
+        public bool StartContinuousEvent(string eventId)
+        {
+            EventDefinition eventDefinition = eventLibraryService.GetEventById(eventId);
+            if (eventDefinition == null || eventDefinition.Type != EventType.Continuous || !IsEventInPersonalLibrary(eventId))
+            {
+                return false;
+            }
+
+            playerData.ActiveContinuousEventId = eventId;
+            playerData.ActiveContinuousEventStartUnixSeconds = DateTimeOffset.Now.ToUnixTimeSeconds();
+
+            foreach (PlayerEventData playerEvent in playerData.PersonalEvents)
+            {
+                playerEvent.IsActive = playerEvent.EventId == eventId;
+            }
+
+            SaveNow();
+            return true;
+        }
+
+        public bool FinishActiveContinuousEvent()
+        {
+            if (string.IsNullOrEmpty(playerData.ActiveContinuousEventId) || playerData.ActiveContinuousEventStartUnixSeconds <= 0)
+            {
+                return false;
+            }
+
+            long elapsedSeconds = DateTimeOffset.Now.ToUnixTimeSeconds() - playerData.ActiveContinuousEventStartUnixSeconds;
+            float elapsedMinutes = Math.Max(0f, elapsedSeconds / 60f);
+            string eventId = playerData.ActiveContinuousEventId;
+
+            playerData.ActiveContinuousEventId = string.Empty;
+            playerData.ActiveContinuousEventStartUnixSeconds = 0;
+
+            foreach (PlayerEventData playerEvent in playerData.PersonalEvents)
+            {
+                playerEvent.IsActive = false;
+            }
+
+            RecordContinuousEvent(eventId, elapsedMinutes);
+            return true;
+        }
+
+        public float GetActiveContinuousElapsedMinutes()
+        {
+            if (string.IsNullOrEmpty(playerData.ActiveContinuousEventId) || playerData.ActiveContinuousEventStartUnixSeconds <= 0)
+            {
+                return 0f;
+            }
+
+            long elapsedSeconds = DateTimeOffset.Now.ToUnixTimeSeconds() - playerData.ActiveContinuousEventStartUnixSeconds;
+            return Math.Max(0f, elapsedSeconds / 60f);
         }
 
         public void ClearTodayProgress()
@@ -156,9 +270,47 @@ namespace LifeRPG.Services
                 playerEvent.TodayCompleted = false;
                 playerEvent.IsActive = false;
             }
+
+            SaveNow();
         }
 
-        private PlayerData CreateMockPlayerData()
+        public void ForceSettleToday()
+        {
+            dailySettlementService.ForceSettleToday(playerData);
+            equipmentService.RefreshUnlockedEquipment(playerData);
+            SaveNow();
+        }
+
+        public bool Equip(string equipmentId)
+        {
+            bool changed = equipmentService.Equip(playerData, equipmentId);
+            if (changed)
+            {
+                SaveNow();
+            }
+
+            return changed;
+        }
+
+        public void Unequip(string equipmentId)
+        {
+            equipmentService.Unequip(playerData, equipmentId);
+            SaveNow();
+        }
+
+        public void SaveNow()
+        {
+            saveDataService.Save(playerData);
+        }
+
+        public void ResetSaveData()
+        {
+            saveDataService.DeleteSave();
+            playerData = CreateDefaultPlayerData();
+            SaveNow();
+        }
+
+        private PlayerData CreateDefaultPlayerData()
         {
             PlayerData data = new PlayerData
             {
@@ -167,21 +319,103 @@ namespace LifeRPG.Services
                 TargetDimensions = new DimensionSet(10f, 6f, 8f, 4f, 10f, 0f),
                 CurrentDimensions = new DimensionSet(10f, 6f, 8f, 4f, 10f, 0f),
                 TodayDimensions = new DimensionSet(),
-                LastSettlementDate = string.Empty,
+                LastSettlementDate = DateTime.Now.ToString("yyyy-MM-dd"),
                 IsInitialized = true,
+                ActiveContinuousEventId = string.Empty,
+                ActiveContinuousEventStartUnixSeconds = 0,
                 SelectedEventId = "fruit"
             };
 
-            data.PersonalEvents.Add(new PlayerEventData("run"));
-            data.PersonalEvents.Add(new PlayerEventData("study"));
-            data.PersonalEvents.Add(new PlayerEventData("fruit"));
-            data.PersonalEvents.Add(new PlayerEventData("date"));
+            AddDefaultPersonalEvents(data);
 
             data.UnlockedEquipmentIds.Add("equip_old_running_shoes");
             data.UnlockedEquipmentIds.Add("equip_round_glasses");
             data.EquippedEquipmentIds.Add("equip_old_running_shoes");
 
             return data;
+        }
+
+        private void RepairPlayerData()
+        {
+            if (playerData == null)
+            {
+                playerData = CreateDefaultPlayerData();
+                return;
+            }
+
+            if (playerData.TargetDimensions == null)
+            {
+                playerData.TargetDimensions = new DimensionSet(10f, 6f, 8f, 4f, 10f, 0f);
+            }
+
+            if (playerData.CurrentDimensions == null)
+            {
+                playerData.CurrentDimensions = playerData.TargetDimensions.Clone();
+            }
+
+            if (playerData.TodayDimensions == null)
+            {
+                playerData.TodayDimensions = new DimensionSet();
+            }
+
+            if (playerData.ActiveContinuousEventId == null)
+            {
+                playerData.ActiveContinuousEventId = string.Empty;
+            }
+
+            bool shouldCreateDefaultPersonalEvents = playerData.PersonalEvents == null || playerData.PersonalEvents.Count == 0;
+            if (playerData.PersonalEvents == null)
+            {
+                playerData.PersonalEvents = new List<PlayerEventData>();
+            }
+
+            if (playerData.UnlockedEquipmentIds == null)
+            {
+                playerData.UnlockedEquipmentIds = new List<string>();
+            }
+
+            if (playerData.EquippedEquipmentIds == null)
+            {
+                playerData.EquippedEquipmentIds = new List<string>();
+            }
+
+            if (string.IsNullOrEmpty(playerData.SelectedEventId))
+            {
+                playerData.SelectedEventId = "fruit";
+            }
+
+            if (shouldCreateDefaultPersonalEvents)
+            {
+                AddDefaultPersonalEvents(playerData);
+            }
+        }
+
+        private void AddDefaultPersonalEvents(PlayerData data)
+        {
+            AddDefaultPersonalEvent(data, "run");
+            AddDefaultPersonalEvent(data, "study");
+            AddDefaultPersonalEvent(data, "work");
+            AddDefaultPersonalEvent(data, "fruit");
+            AddDefaultPersonalEvent(data, "date");
+            AddDefaultPersonalEvent(data, "water");
+            AddDefaultPersonalEvent(data, "bookkeeping");
+        }
+
+        private void AddDefaultPersonalEvent(PlayerData data, string eventId)
+        {
+            if (eventLibraryService.GetEventById(eventId) == null)
+            {
+                return;
+            }
+
+            PlayerEventData playerEvent = data.PersonalEvents.Find(item => item.EventId == eventId);
+            if (playerEvent == null)
+            {
+                data.PersonalEvents.Add(new PlayerEventData(eventId));
+                return;
+            }
+
+            playerEvent.IsInPersonalLibrary = true;
         }
     }
 }

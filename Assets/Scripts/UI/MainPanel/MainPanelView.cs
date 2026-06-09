@@ -35,19 +35,37 @@ namespace LifeRPG.UI.MainPanel
         [SerializeField] private EventFillPanelView eventFillPanelView;
         [SerializeField] private Button confirmButton;
 
+        [Header("窗口控制")]
+        [SerializeField] private Button closeButton;
+
         private readonly List<DimensionBarView> runtimeDimensionBars = new List<DimensionBarView>();
         private readonly List<EventListItemView> runtimeEventItems = new List<EventListItemView>();
+        private readonly List<EventListItemView> fixedEventItems = new List<EventListItemView>();
+        private EventDefinition selectedEvent;
 
         public event Action<string> OnEventSelected;
         public event Action OnConfirmClicked;
+        public event Action OnCloseClicked;
 
-        public bool CanSubmitSelectedRecordEvent => eventFillPanelView != null && eventFillPanelView.CanSubmitRecordEvent;
+        public bool CanSubmitSelectedRecordEvent => eventFillPanelView == null || eventFillPanelView.CanSubmitRecordEvent;
 
         private void Awake()
         {
+            AutoBindReferences();
+
             if (confirmButton != null)
             {
                 confirmButton.onClick.AddListener(() => OnConfirmClicked?.Invoke());
+            }
+
+            if (closeButton != null)
+            {
+                closeButton.onClick.AddListener(() => OnCloseClicked?.Invoke());
+            }
+
+            if (eventFillPanelView != null)
+            {
+                eventFillPanelView.OnCompletionChanged += RefreshConfirmButton;
             }
 
             HideSceneTemplates();
@@ -55,6 +73,8 @@ namespace LifeRPG.UI.MainPanel
 
         public void Refresh(PlayerData playerData, IReadOnlyList<EventDefinition> eventDefinitions)
         {
+            AutoBindReferences();
+
             if (playerData == null)
             {
                 return;
@@ -140,6 +160,29 @@ namespace LifeRPG.UI.MainPanel
                 return;
             }
 
+            fixedEventItems.RemoveAll(item => item == null);
+            if ((eventItemPrefab == null || eventListRoot == null) && fixedEventItems.Count > 0)
+            {
+                for (int i = 0; i < fixedEventItems.Count; i++)
+                {
+                    bool hasDefinition = i < eventDefinitions.Count;
+                    fixedEventItems[i].gameObject.SetActive(hasDefinition);
+                    fixedEventItems[i].OnSelected -= OnEventItemSelected;
+
+                    if (!hasDefinition)
+                    {
+                        continue;
+                    }
+
+                    EventDefinition definition = eventDefinitions[i];
+                    fixedEventItems[i].Refresh(definition, FindPlayerEventData(playerData, definition.Id));
+                    fixedEventItems[i].SetSelected(definition.Id == playerData.SelectedEventId);
+                    fixedEventItems[i].OnSelected += OnEventItemSelected;
+                }
+
+                return;
+            }
+
             if (eventItemPrefab != null && eventListRoot != null)
             {
                 ClearRuntimeEvents();
@@ -149,6 +192,7 @@ namespace LifeRPG.UI.MainPanel
                     EventListItemView item = Instantiate(eventItemPrefab, eventListRoot);
                     item.gameObject.SetActive(true);
                     item.Refresh(definition, FindPlayerEventData(playerData, definition.Id));
+                    item.SetSelected(definition.Id == playerData.SelectedEventId);
                     item.OnSelected += OnEventItemSelected;
                     runtimeEventItems.Add(item);
                 }
@@ -165,7 +209,7 @@ namespace LifeRPG.UI.MainPanel
 
         private void RefreshEventFill(PlayerData playerData, IReadOnlyList<EventDefinition> eventDefinitions)
         {
-            EventDefinition selectedEvent = FindEventDefinition(eventDefinitions, playerData.SelectedEventId);
+            selectedEvent = FindEventDefinition(eventDefinitions, playerData.SelectedEventId);
             PlayerEventData selectedProgress = selectedEvent != null ? FindPlayerEventData(playerData, selectedEvent.Id) : null;
 
             if (currentEventText != null)
@@ -178,14 +222,16 @@ namespace LifeRPG.UI.MainPanel
                 eventFillPanelView.Refresh(selectedEvent, selectedProgress);
             }
 
-            RefreshConfirmButton(selectedEvent);
+            RefreshConfirmButton();
         }
 
-        private void RefreshConfirmButton(EventDefinition selectedEvent)
+        private void RefreshConfirmButton()
         {
             if (confirmButton != null)
             {
-                confirmButton.interactable = selectedEvent != null && selectedEvent.Type == LifeRPG.Data.EventType.Record;
+                confirmButton.interactable = selectedEvent != null
+                    && selectedEvent.Type == LifeRPG.Data.EventType.Record
+                    && CanSubmitSelectedRecordEvent;
             }
         }
 
@@ -283,6 +329,84 @@ namespace LifeRPG.UI.MainPanel
             {
                 templateObject.SetActive(false);
             }
+        }
+
+        private void AutoBindReferences()
+        {
+            if (eventFillPanelView == null)
+            {
+                Transform fillRoot = FindChildByName(transform, "CurrentEventPerfab");
+                if (fillRoot == null)
+                {
+                    fillRoot = FindChildByName(transform, "CurrentEventPrefab");
+                }
+
+                if (fillRoot != null)
+                {
+                    eventFillPanelView = fillRoot.GetComponent<EventFillPanelView>();
+                    if (eventFillPanelView == null)
+                    {
+                        eventFillPanelView = fillRoot.gameObject.AddComponent<EventFillPanelView>();
+                    }
+                }
+            }
+
+            if (confirmButton == null)
+            {
+                Transform confirmRoot = FindChildByName(transform, "ConfirmButton");
+                confirmButton = confirmRoot != null ? confirmRoot.GetComponent<Button>() : null;
+            }
+
+            if (fixedEventItems.Count == 0)
+            {
+                EventListItemView[] existingItems = GetComponentsInChildren<EventListItemView>(true);
+                foreach (EventListItemView item in existingItems)
+                {
+                    if (item != null && !fixedEventItems.Contains(item))
+                    {
+                        fixedEventItems.Add(item);
+                    }
+                }
+
+                if (fixedEventItems.Count == 0)
+                {
+                    Transform[] children = GetComponentsInChildren<Transform>(true);
+                    foreach (Transform child in children)
+                    {
+                        if (!child.name.StartsWith("EventElement", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        EventListItemView item = child.GetComponent<EventListItemView>();
+                        if (item == null)
+                        {
+                            item = child.gameObject.AddComponent<EventListItemView>();
+                        }
+
+                        fixedEventItems.Add(item);
+                    }
+                }
+            }
+        }
+
+        private Transform FindChildByName(Transform root, string targetName)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Transform[] children = root.GetComponentsInChildren<Transform>(true);
+            foreach (Transform child in children)
+            {
+                if (child.name == targetName)
+                {
+                    return child;
+                }
+            }
+
+            return null;
         }
     }
 }
