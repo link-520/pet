@@ -11,6 +11,13 @@ namespace LifeRPG.Core
         [SerializeField] private GameObject mainPanelWindow;
         [SerializeField] private GameObject warehouseWindow;
 
+        private void Start()
+        {
+            ShowDesktopPet();
+            HideMainPanel();
+            HideWarehouse();
+        }
+
         public void ShowDesktopPet()
         {
             SetWindowVisible(desktopPetWindow, true);
