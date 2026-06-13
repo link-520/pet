@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace LifeRPG.UI.MainPanel
 {
     /// <summary>
-    /// 单个六维显示条。显示当前六维、目标六维和今日累计值。
+    /// 单个六维显示条。显示今日获得值与每日目标值。
     /// </summary>
     public class DimensionBarView : MonoBehaviour
     {
@@ -26,6 +26,9 @@ namespace LifeRPG.UI.MainPanel
 
         public void Refresh(DimensionType type, float currentValue, float targetValue, float todayValue)
         {
+            float safeTargetValue = Mathf.Max(0f, targetValue);
+            float safeTodayValue = Mathf.Max(0f, todayValue);
+
             if (nameText != null)
             {
                 nameText.text = GetDimensionName(type);
@@ -33,15 +36,14 @@ namespace LifeRPG.UI.MainPanel
 
             if (valueText != null)
             {
-                string baseText = targetValue > 0f ? $"当前 {FormatValue(currentValue)} / 目标 {FormatValue(targetValue)}" : $"当前 {FormatValue(currentValue)}";
-                valueText.text = $"{baseText}  今日 +{FormatValue(todayValue)}";
+                valueText.text = $"{FormatValue(safeTodayValue)}/{FormatValue(safeTargetValue)}";
             }
 
             if (valueSlider != null)
             {
                 valueSlider.minValue = 0f;
-                valueSlider.maxValue = targetValue > 0f ? targetValue : 100f;
-                valueSlider.value = currentValue;
+                valueSlider.maxValue = safeTargetValue > 0f ? safeTargetValue : 1f;
+                valueSlider.value = Mathf.Clamp(safeTodayValue, 0f, valueSlider.maxValue);
             }
         }
 

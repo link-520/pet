@@ -33,6 +33,9 @@ namespace LifeRPG.UI.MainPanel
             && currentEvent.Type == LifeRPG.Data.EventType.Record
             && (completedButton == null || completed);
 
+        public bool CanSubmitSelectedEvent => currentEvent != null
+            && (currentEvent.Type == LifeRPG.Data.EventType.Continuous || CanSubmitRecordEvent);
+
         private void Awake()
         {
             AutoBindReferences();
@@ -97,7 +100,7 @@ namespace LifeRPG.UI.MainPanel
             {
                 hintText.text = currentEvent.Type == LifeRPG.Data.EventType.Record
                     ? "点击完成后确认，本次记录会进入今日六维。"
-                    : "持续性事件请使用“开始事件”入口计时。";
+                    : "确认后按计划时长记录，本次持续事件会进入今日六维。";
             }
 
             RefreshCompletedButton();
@@ -126,6 +129,7 @@ namespace LifeRPG.UI.MainPanel
         {
             if (completedButton != null)
             {
+                completedButton.gameObject.SetActive(currentEvent == null || currentEvent.Type == LifeRPG.Data.EventType.Record);
                 completedButton.interactable = currentEvent != null && currentEvent.Type == LifeRPG.Data.EventType.Record;
             }
 
@@ -145,6 +149,8 @@ namespace LifeRPG.UI.MainPanel
 
             if (incompleteButton != null)
             {
+                incompleteButton.gameObject.SetActive(currentEvent == null || currentEvent.Type == LifeRPG.Data.EventType.Record);
+
                 Image incompleteImage = incompleteButton.GetComponent<Image>();
                 if (incompleteImage != null)
                 {
@@ -240,4 +246,3 @@ namespace LifeRPG.UI.MainPanel
         }
     }
 }
-

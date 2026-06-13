@@ -1,4 +1,5 @@
-﻿using LifeRPG.Services;
+﻿using LifeRPG.Data;
+using LifeRPG.Services;
 using UnityEngine;
 
 namespace LifeRPG.UI.MainPanel
@@ -72,12 +73,26 @@ namespace LifeRPG.UI.MainPanel
 
         private void HandleConfirmClicked()
         {
-            if (view == null || !view.CanSubmitSelectedRecordEvent)
+            if (view == null || !view.CanSubmitSelectedEvent)
             {
                 return;
             }
 
-            playerDataService.RecordEventOnce(playerDataService.GetPlayerData().SelectedEventId);
+            EventDefinition selectedEvent = playerDataService.GetSelectedEvent();
+            if (selectedEvent == null)
+            {
+                return;
+            }
+
+            if (selectedEvent.Type == LifeRPG.Data.EventType.Record)
+            {
+                playerDataService.RecordEventOnce(selectedEvent.Id);
+            }
+            else
+            {
+                playerDataService.RecordContinuousEvent(selectedEvent.Id, selectedEvent.RequiredMinutes);
+            }
+
             RefreshPanel();
         }
 

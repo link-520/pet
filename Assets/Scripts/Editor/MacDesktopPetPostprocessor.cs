@@ -1,3 +1,38 @@
+/// <summary>
+/// Mac桌宠构建流程自动化工具。
+///
+/// 执行时机：
+/// Build开始前：
+///     编译原生插件 DesktopPetMac.mm。
+///
+/// Build完成后：
+///     修改生成的 Info.plist。
+///
+/// 工作流程：
+/// DesktopPetMac.mm
+///     ↓
+/// DesktopPetMac.bundle
+///     ↓
+/// Unity Build
+///     ↓
+/// 修改 Info.plist
+///     ↓
+/// 生成最终桌宠 App
+///
+/// 本脚本仅在 Unity Editor 中运行，
+/// 不会被打包到最终游戏中。
+///
+/// 功能：
+/// 1. 在Unity开始构建Mac应用前，自动编译 Objective-C 原生插件
+///    （DesktopPetMac.mm -> DesktopPetMac.bundle）。
+///
+/// 2. 在Unity完成Mac应用构建后，自动修改 Info.plist，
+///    配置桌宠所需的系统参数（Retina支持、Dock行为等）。
+///
+/// 作用：
+/// 避免每次打包后手动编译原生插件和修改 plist 文件，
+/// 实现 Mac 桌宠工程的一键构建。
+/// </summary>
 using System.IO;
 using System.Diagnostics;
 using System.Xml.Linq;
