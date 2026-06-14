@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using LifeRPG.Data;
+using LifeRPG.Services;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,6 +20,8 @@ namespace LifeRPG.UI.MainPanel
 
         [Header("装备占位")]
         [SerializeField] private TMP_Text equipmentText;
+        [SerializeField] private Transform equipmentRoot;
+        [SerializeField] private List<Transform> fixedEquipmentSlots = new List<Transform>();
 
         [Header("六维显示")]
         [SerializeField] private Transform dimensionRoot;
@@ -47,6 +50,8 @@ namespace LifeRPG.UI.MainPanel
         private readonly List<DimensionBarView> runtimeDimensionBars = new List<DimensionBarView>();
         private readonly List<EventListItemView> runtimeEventItems = new List<EventListItemView>();
         private readonly List<EventListItemView> fixedEventItems = new List<EventListItemView>();
+        private readonly Dictionary<string, Sprite> equipmentIconCache = new Dictionary<string, Sprite>();
+        private EquipmentLibraryService equipmentLibraryService;
         private EventDefinition selectedEvent;
         private RectTransform rectTransform;
         private bool fittingWindow;
@@ -66,6 +71,7 @@ namespace LifeRPG.UI.MainPanel
         private void Awake()
         {
             rectTransform = transform as RectTransform;
+            equipmentLibraryService = EquipmentLibraryService.GetShared();
             AutoBindReferences();
             FitWindowToCanvas();
 
@@ -186,11 +192,254 @@ namespace LifeRPG.UI.MainPanel
         /// </summary>
         private void RefreshEquipment(PlayerData playerData)
         {
+            EnsureFixedEquipmentSlotsBound();
+
+            EquipmentType[] slotTypes =
+            {
+                EquipmentType.Hat,
+                EquipmentType.Glasses,
+                EquipmentType.Tie,
+                EquipmentType.Gloves,
+                EquipmentType.Clothes,
+                EquipmentType.Pet
+            };
+
+            if (fixedEquipmentSlots.Count > 0)
+            {
+                for (int i = 0; i < fixedEquipmentSlots.Count && i < slotTypes.Length; i++)
+                {
+                    RefreshEquipmentSlot(fixedEquipmentSlots[i], slotTypes[i], playerData);
+                }
+
+                if (equipmentText != null)
+                {
+                    equipmentText.gameObject.SetActive(false);
+                }
+
+                return;
+            }
+
             if (equipmentText != null)
             {
                 equipmentText.text = playerData.UnlockedEquipmentIds.Count > 0
                     ? "已解锁装备\n" + string.Join("\n", playerData.UnlockedEquipmentIds)
                     : "暂无装备";
+            }
+        }
+
+        private void EnsureFixedEquipmentSlotsBound()
+        {
+            fixedEquipmentSlots.RemoveAll(slot => slot == null);
+
+            if (fixedEquipmentSlots.Count >= 6)
+            {
+                return;
+            }
+
+            if (equipmentRoot == null)
+            {
+                equipmentRoot = FindChildByName(transform, "EquipmentArea");
+            }
+
+            if (equipmentRoot == null)
+            {
+                return;
+            }
+
+            foreach (Transform child in equipmentRoot)
+            {
+                if (child != null && child.name.StartsWith("EquipmentElement", StringComparison.Ordinal) && !fixedEquipmentSlots.Contains(child))
+                {
+                    fixedEquipmentSlots.Add(child);
+                }
+            }
+
+            fixedEquipmentSlots.Sort((left, right) => left.GetSiblingIndex().CompareTo(right.GetSiblingIndex()));
+        }
+
+        private void RefreshEquipmentSlot(Transform slot, EquipmentType type, PlayerData playerData)
+        {
+            if (slot == null)
+            {
+                return;
+            }
+
+            EquipmentDefinition equipped = FindEquippedEquipment(type, playerData);
+            bool hasEquipment = equipped != null;
+
+            TMP_Text label = EnsureEquipmentLabel(slot);
+            if (label != null)
+            {
+                label.text = hasEquipment ? equipped.Name : GetEquipmentTypeName(type);
+            }
+
+            HideLegacyEquipmentIcons(slot);
+            Image icon = EnsureEquipmentIcon(slot);
+            if (icon != null)
+            {
+                Sprite sprite = LoadEquipmentIcon(hasEquipment ? equipped.IconId : GetDefaultEquipmentIconId(type));
+                if (sprite != null)
+                {
+                    icon.sprite = sprite;
+                    icon.preserveAspect = true;
+                }
+
+                icon.color = hasEquipment
+                    ? Color.white
+                    : new Color(1f, 1f, 1f, 0.38f);
+            }
+
+            Button button = slot.GetComponentInChildren<Button>(true);
+            Image background = button != null ? button.targetGraphic as Image : null;
+            if (background != null)
+            {
+                background.color = hasEquipment
+                    ? new Color(1f, 0.965f, 0.91f, 1f)
+                    : new Color(1f, 0.965f, 0.91f, 0.65f);
+            }
+        }
+
+        private EquipmentDefinition FindEquippedEquipment(EquipmentType type, PlayerData playerData)
+        {
+            if (playerData == null || playerData.EquippedEquipmentIds == null || equipmentLibraryService == null)
+            {
+                return null;
+            }
+
+            foreach (string equipmentId in playerData.EquippedEquipmentIds)
+            {
+                EquipmentDefinition equipment = equipmentLibraryService.GetEquipmentById(equipmentId);
+                if (equipment != null && equipment.Type == type)
+                {
+                    return equipment;
+                }
+            }
+
+            return null;
+        }
+
+        private void HideLegacyEquipmentIcons(Transform slot)
+        {
+            Image[] images = slot.GetComponentsInChildren<Image>(true);
+            foreach (Image image in images)
+            {
+                if (image.transform == slot
+                    || image.GetComponent<Button>() != null
+                    || image.transform.name == "RuntimeEquipmentIcon")
+                {
+                    continue;
+                }
+
+                image.color = new Color(image.color.r, image.color.g, image.color.b, 0f);
+            }
+        }
+
+        private Image EnsureEquipmentIcon(Transform slot)
+        {
+            Transform existing = slot.Find("RuntimeEquipmentIcon");
+            if (existing != null)
+            {
+                return existing.GetComponent<Image>();
+            }
+
+            GameObject iconObject = new GameObject("RuntimeEquipmentIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            iconObject.transform.SetParent(slot, false);
+            iconObject.transform.SetAsLastSibling();
+
+            RectTransform rectTransform = iconObject.GetComponent<RectTransform>();
+            rectTransform.anchorMin = new Vector2(0.18f, 0.36f);
+            rectTransform.anchorMax = new Vector2(0.82f, 0.94f);
+            rectTransform.offsetMin = Vector2.zero;
+            rectTransform.offsetMax = Vector2.zero;
+            rectTransform.pivot = new Vector2(0.5f, 0.5f);
+
+            Image image = iconObject.GetComponent<Image>();
+            image.raycastTarget = false;
+            image.preserveAspect = true;
+            return image;
+        }
+
+        private TMP_Text EnsureEquipmentLabel(Transform slot)
+        {
+            TMP_Text label = slot.GetComponentInChildren<TMP_Text>(true);
+            if (label == null)
+            {
+                return null;
+            }
+
+            RectTransform rectTransform = label.transform as RectTransform;
+            if (rectTransform != null)
+            {
+                rectTransform.anchorMin = new Vector2(0f, 0f);
+                rectTransform.anchorMax = new Vector2(1f, 0.32f);
+                rectTransform.offsetMin = new Vector2(2f, 2f);
+                rectTransform.offsetMax = new Vector2(-2f, -2f);
+            }
+
+            label.alignment = TextAlignmentOptions.Center;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 12f;
+            label.fontSizeMax = 19f;
+            label.raycastTarget = false;
+            return label;
+        }
+
+        private Sprite LoadEquipmentIcon(string iconId)
+        {
+            if (string.IsNullOrEmpty(iconId))
+            {
+                return null;
+            }
+
+            if (equipmentIconCache.TryGetValue(iconId, out Sprite cached))
+            {
+                return cached;
+            }
+
+            Sprite sprite = Resources.Load<Sprite>($"LifeRPG_UI_Images/{iconId}");
+            equipmentIconCache[iconId] = sprite;
+            return sprite;
+        }
+
+        private string GetDefaultEquipmentIconId(EquipmentType type)
+        {
+            switch (type)
+            {
+                case EquipmentType.Hat:
+                    return "equip_hat";
+                case EquipmentType.Glasses:
+                    return "equip_glasses";
+                case EquipmentType.Tie:
+                    return "equip_tie";
+                case EquipmentType.Gloves:
+                    return "equip_gloves";
+                case EquipmentType.Clothes:
+                    return "equip_clothes";
+                case EquipmentType.Pet:
+                    return "equip_pet";
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private string GetEquipmentTypeName(EquipmentType type)
+        {
+            switch (type)
+            {
+                case EquipmentType.Hat:
+                    return "帽子";
+                case EquipmentType.Glasses:
+                    return "眼镜";
+                case EquipmentType.Tie:
+                    return "领带";
+                case EquipmentType.Gloves:
+                    return "手套";
+                case EquipmentType.Clothes:
+                    return "衣服";
+                case EquipmentType.Pet:
+                    return "宠物";
+                default:
+                    return type.ToString();
             }
         }
 
