@@ -11,7 +11,7 @@ namespace LifeRPG.UI.MainPanel
     /// </summary>
     public class EventListItemView : MonoBehaviour
     {
-        [SerializeField] private TMP_Text titleText;
+        [SerializeField] private TMP_Text eventNameText;
         [SerializeField] private TMP_Text detailText;
         [SerializeField] private TMP_Text dimensionText;
         [SerializeField] private TMP_Text timeText;
@@ -40,9 +40,9 @@ namespace LifeRPG.UI.MainPanel
             AutoBindReferences();
             eventId = definition.Id;
 
-            if (titleText != null)
+            if (eventNameText != null)
             {
-                titleText.text = definition.Name;
+                eventNameText.text = definition.Name;
             }
 
             if (detailText != null)
@@ -117,9 +117,9 @@ namespace LifeRPG.UI.MainPanel
             foreach (TMP_Text text in texts)
             {
                 string lowerName = text.gameObject.name.ToLowerInvariant();
-                if (titleText == null && (lowerName == "event" || lowerName.Contains("name")))
+                if (eventNameText == null && (lowerName == "event" || lowerName.Contains("name")))
                 {
-                    titleText = text;
+                    eventNameText = text;
                     continue;
                 }
 
@@ -144,9 +144,9 @@ namespace LifeRPG.UI.MainPanel
                 }
             }
 
-            if (titleText == null && texts.Length > 0)
+            if (eventNameText == null && texts.Length > 0)
             {
-                titleText = texts[0];
+                eventNameText = texts[0];
             }
         }
 

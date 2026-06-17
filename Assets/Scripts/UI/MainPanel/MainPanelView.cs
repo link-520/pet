@@ -16,7 +16,6 @@ namespace LifeRPG.UI.MainPanel
         [Header("宠物显示")]
         [SerializeField] private Image petImage;
         [SerializeField] private Sprite placeholderPetSprite;
-        [SerializeField] private TMP_Text petNameText;
 
         [Header("装备占位")]
         [SerializeField] private TMP_Text equipmentText;
@@ -25,14 +24,12 @@ namespace LifeRPG.UI.MainPanel
 
         [Header("六维显示")]
         [SerializeField] private Transform dimensionRoot;
-        [SerializeField] private DimensionBarView dimensionBarPrefab;
         [SerializeField] private List<DimensionBarView> fixedDimensionBars = new List<DimensionBarView>();
         [SerializeField] private DimensionRadarChart dimensionRadarChart;
 
         [Header("事件列表")]
         [SerializeField] private Transform eventListRoot;
         [SerializeField] private EventListItemView eventItemPrefab;
-        [SerializeField] private TMP_Text eventFallbackText;
 
         [Header("事件填写")]
         [SerializeField] private TMP_Text currentEventText;
@@ -42,10 +39,10 @@ namespace LifeRPG.UI.MainPanel
         [Header("窗口控制")]
         [SerializeField] private Button closeButton;
 
-        [Header("窗口适配")]
-        [SerializeField] private bool fitWindowToCanvas = true;
-        [SerializeField] private Vector2 designWindowSize = new Vector2(1540f, 920f);
-        [SerializeField] private Vector2 canvasPadding = new Vector2(80f, 80f);
+        // [Header("窗口适配")]
+        // [SerializeField] private bool fitWindowToCanvas = true;
+        // [SerializeField] private Vector2 designWindowSize = new Vector2(1540f, 920f);
+        // [SerializeField] private Vector2 canvasPadding = new Vector2(80f, 80f);
 
         private readonly List<DimensionBarView> runtimeDimensionBars = new List<DimensionBarView>();
         private readonly List<EventListItemView> runtimeEventItems = new List<EventListItemView>();
@@ -59,21 +56,16 @@ namespace LifeRPG.UI.MainPanel
         public event Action<string> OnEventSelected;
         public event Action OnConfirmClicked;
         public event Action OnCloseClicked;
+        public event Action OnOpenEquipmentWarehouseClicked;
+        public event Action OnOpenEventWarehouseClicked;
+        public event Action OnOpenDimensionWarehouseClicked;
 
-        /// <summary>
-        /// 当前选中的记录类事件是否满足提交条件。
-        /// </summary>
         public bool CanSubmitSelectedEvent => eventFillPanelView == null || eventFillPanelView.CanSubmitSelectedEvent;
 
-        /// <summary>
-        /// 初始化引用、按钮事件和场景模板状态。
-        /// </summary>
         private void Awake()
         {
             rectTransform = transform as RectTransform;
             equipmentLibraryService = EquipmentLibraryService.GetShared();
-            AutoBindReferences();
-            FitWindowToCanvas();
 
             if (confirmButton != null)
             {
@@ -93,12 +85,9 @@ namespace LifeRPG.UI.MainPanel
             HideSceneTemplates();
         }
 
-        /// <summary>
-        /// 面板启用时重新适配窗口尺寸。
-        /// </summary>
         private void OnEnable()
         {
-            FitWindowToCanvas();
+            // FitWindowToCanvas();
         }
 
         /// <summary>
@@ -106,10 +95,6 @@ namespace LifeRPG.UI.MainPanel
         /// </summary>
         private void OnRectTransformDimensionsChange()
         {
-            if (isActiveAndEnabled)
-            {
-                FitWindowToCanvas();
-            }
         }
 
         /// <summary>
@@ -117,8 +102,8 @@ namespace LifeRPG.UI.MainPanel
         /// </summary>
         public void Refresh(PlayerData playerData, IReadOnlyList<EventDefinition> eventDefinitions)
         {
-            AutoBindReferences();
-            FitWindowToCanvas();
+            // AutoBindReferences();
+            // FitWindowToCanvas();
 
             if (playerData == null)
             {
@@ -132,58 +117,50 @@ namespace LifeRPG.UI.MainPanel
             RefreshEventFill(playerData, eventDefinitions);
         }
 
-        /// <summary>
-        /// 按设计尺寸和父级可用空间缩放并居中窗口。
-        /// </summary>
-        private void FitWindowToCanvas()
-        {
-            if (!fitWindowToCanvas || fittingWindow)
-            {
-                return;
-            }
+        // /// <summary>
+        // /// 按设计尺寸和父级可用空间缩放并居中窗口。
+        // /// </summary>
+        // private void FitWindowToCanvas()
+        // {
+        //     if (!fitWindowToCanvas || fittingWindow)
+        //     {
+        //         return;
+        //     }
 
-            if (rectTransform == null)
-            {
-                rectTransform = transform as RectTransform;
-            }
+        //     if (rectTransform == null)
+        //     {
+        //         rectTransform = transform as RectTransform;
+        //     }
 
-            RectTransform parentRect = rectTransform != null ? rectTransform.parent as RectTransform : null;
-            if (rectTransform == null || parentRect == null)
-            {
-                return;
-            }
+        //     RectTransform parentRect = rectTransform != null ? rectTransform.parent as RectTransform : null;
+        //     if (rectTransform == null || parentRect == null)
+        //     {
+        //         return;
+        //     }
 
-            Vector2 availableSize = parentRect.rect.size - canvasPadding * 2f;
-            if (availableSize.x <= 0f || availableSize.y <= 0f)
-            {
-                return;
-            }
+        //     Vector2 availableSize = parentRect.rect.size - canvasPadding * 2f;
+        //     if (availableSize.x <= 0f || availableSize.y <= 0f)
+        //     {
+        //         return;
+        //     }
 
-            float scale = Mathf.Min(1f, availableSize.x / designWindowSize.x, availableSize.y / designWindowSize.y);
+        //     float scale = Mathf.Min(1f, availableSize.x / designWindowSize.x, availableSize.y / designWindowSize.y);
 
-            fittingWindow = true;
-            rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-            rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            rectTransform.anchoredPosition = Vector2.zero;
-            rectTransform.sizeDelta = designWindowSize;
-            rectTransform.localScale = new Vector3(scale, scale, 1f);
-            fittingWindow = false;
-        }
+        //     fittingWindow = true;
+        //     rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+        //     rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        //     rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        //     rectTransform.anchoredPosition = Vector2.zero;
+        //     rectTransform.sizeDelta = designWindowSize;
+        //     rectTransform.localScale = new Vector3(scale, scale, 1f);
+        //     fittingWindow = false;
+        // }
 
-        /// <summary>
-        /// 刷新宠物头像占位图和宠物名称显示。
-        /// </summary>
         private void RefreshPet(PlayerData playerData)
         {
             if (petImage != null && placeholderPetSprite != null)
             {
                 petImage.sprite = placeholderPetSprite;
-            }
-
-            if (petNameText != null)
-            {
-                petNameText.text = $"{playerData.Nickname} / {playerData.PetId}";
             }
         }
 
@@ -192,8 +169,6 @@ namespace LifeRPG.UI.MainPanel
         /// </summary>
         private void RefreshEquipment(PlayerData playerData)
         {
-            EnsureFixedEquipmentSlotsBound();
-
             EquipmentType[] slotTypes =
             {
                 EquipmentType.Hat,
@@ -210,21 +185,8 @@ namespace LifeRPG.UI.MainPanel
                 {
                     RefreshEquipmentSlot(fixedEquipmentSlots[i], slotTypes[i], playerData);
                 }
-
-                if (equipmentText != null)
-                {
-                    equipmentText.gameObject.SetActive(false);
-                }
-
-                return;
             }
 
-            if (equipmentText != null)
-            {
-                equipmentText.text = playerData.UnlockedEquipmentIds.Count > 0
-                    ? "已解锁装备\n" + string.Join("\n", playerData.UnlockedEquipmentIds)
-                    : "暂无装备";
-            }
         }
 
         private void EnsureFixedEquipmentSlotsBound()
@@ -463,25 +425,6 @@ namespace LifeRPG.UI.MainPanel
                 DimensionType.Happiness
             };
 
-            EnsureFixedDimensionBarsBound(types.Length);
-
-            if (dimensionBarPrefab != null && dimensionRoot != null)
-            {
-                ClearRuntimeDimensions();
-
-                foreach (DimensionType type in types)
-                {
-                    DimensionBarView bar = Instantiate(dimensionBarPrefab, dimensionRoot);
-                    bar.gameObject.SetActive(true);
-                    bar.Refresh(type, currentDimensions.GetValue(type), targetDimensions.GetValue(type), todayDimensions.GetValue(type));
-                    runtimeDimensionBars.Add(bar);
-                }
-
-                HideTemplateIfInRoot(dimensionBarPrefab.gameObject, dimensionRoot);
-                RefreshDimensionRadar(todayDimensions, targetDimensions);
-                return;
-            }
-
             for (int i = 0; i < fixedDimensionBars.Count && i < types.Length; i++)
             {
                 if (fixedDimensionBars[i] != null)
@@ -530,41 +473,11 @@ namespace LifeRPG.UI.MainPanel
 
         private void EnsureDimensionRadarChartBound()
         {
-            if (dimensionRadarChart != null)
+            if (dimensionRadarChart == null)
             {
-                return;
+                Debug.LogWarning("DimensionRadarChart 未绑定");
             }
 
-            dimensionRadarChart = GetComponentInChildren<DimensionRadarChart>(true);
-            if (dimensionRadarChart != null)
-            {
-                return;
-            }
-
-            Transform leftArea = FindChildByName(transform, "LeftArea");
-            if (leftArea == null && dimensionRoot != null)
-            {
-                leftArea = dimensionRoot.parent;
-            }
-
-            if (leftArea == null)
-            {
-                return;
-            }
-
-            GameObject radarObject = new GameObject("DimensionRadarChart", typeof(RectTransform), typeof(CanvasRenderer), typeof(DimensionRadarChart));
-            radarObject.transform.SetParent(leftArea, false);
-            radarObject.transform.SetSiblingIndex(leftArea.childCount - 1);
-
-            RectTransform radarRect = radarObject.GetComponent<RectTransform>();
-            radarRect.anchorMin = new Vector2(0.05f, 0.04f);
-            radarRect.anchorMax = new Vector2(0.95f, 0.42f);
-            radarRect.offsetMin = Vector2.zero;
-            radarRect.offsetMax = Vector2.zero;
-            radarRect.pivot = new Vector2(0.5f, 0.5f);
-
-            dimensionRadarChart = radarObject.GetComponent<DimensionRadarChart>();
-            dimensionRadarChart.raycastTarget = false;
         }
 
         /// <summary>
@@ -618,11 +531,6 @@ namespace LifeRPG.UI.MainPanel
 
                 HideTemplateIfInRoot(eventItemPrefab.gameObject, eventListRoot);
                 return;
-            }
-
-            if (eventFallbackText != null)
-            {
-                eventFallbackText.text = BuildEventFallbackText(eventDefinitions, playerData);
             }
         }
 
@@ -768,15 +676,97 @@ namespace LifeRPG.UI.MainPanel
         /// </summary>
         private void HideSceneTemplates()
         {
-            if (dimensionBarPrefab != null && dimensionRoot != null)
-            {
-                HideTemplateIfInRoot(dimensionBarPrefab.gameObject, dimensionRoot);
-            }
-
             if (eventItemPrefab != null && eventListRoot != null)
             {
                 HideTemplateIfInRoot(eventItemPrefab.gameObject, eventListRoot);
             }
+        }
+
+        private void EnsureTitleButton(string objectName, TMP_Text titleText, Vector2 offset, string labelText, Action onClick)
+        {
+            if (titleText == null || titleText.transform.parent == null)
+            {
+                return;
+            }
+
+            Transform parent = titleText.transform.parent;
+            Transform existing = parent.Find(objectName);
+            Button button = existing != null ? existing.GetComponent<Button>() : null;
+
+            if (button == null)
+            {
+                GameObject buttonObject = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+                buttonObject.transform.SetParent(parent, false);
+                buttonObject.transform.SetAsLastSibling();
+
+                RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+                RectTransform titleRect = titleText.transform as RectTransform;
+                if (titleRect != null)
+                {
+                    buttonRect.anchorMin = titleRect.anchorMin;
+                    buttonRect.anchorMax = titleRect.anchorMax;
+                    buttonRect.pivot = titleRect.pivot;
+                    buttonRect.anchoredPosition = titleRect.anchoredPosition + offset;
+                }
+
+                buttonRect.sizeDelta = new Vector2(84f, 38f);
+
+                Image image = buttonObject.GetComponent<Image>();
+                image.color = new Color(1f, 0.965f, 0.9f, 0.96f);
+
+                button = buttonObject.GetComponent<Button>();
+                button.targetGraphic = image;
+                CreateButtonLabel(buttonObject.transform, titleText, labelText);
+            }
+
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() => onClick?.Invoke());
+        }
+
+        private void CreateButtonLabel(Transform parent, TMP_Text template, string text)
+        {
+            GameObject labelObject = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(parent, false);
+
+            RectTransform rectTransform = labelObject.GetComponent<RectTransform>();
+            rectTransform.anchorMin = Vector2.zero;
+            rectTransform.anchorMax = Vector2.one;
+            rectTransform.offsetMin = Vector2.zero;
+            rectTransform.offsetMax = Vector2.zero;
+
+            TMP_Text label = labelObject.GetComponent<TMP_Text>();
+            label.text = text;
+            label.alignment = TextAlignmentOptions.Center;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 14f;
+            label.fontSizeMax = 22f;
+            label.color = new Color(0.55f, 0.31f, 0.1f, 1f);
+            label.raycastTarget = false;
+
+            if (template != null)
+            {
+                label.font = template.font;
+            }
+        }
+
+        private TMP_Text FindTextByName(string objectName)
+        {
+            Transform root = FindChildByName(transform, objectName);
+            return root != null ? root.GetComponent<TMP_Text>() : null;
+        }
+
+        private TMP_Text FindTextByText(string text)
+        {
+            TMP_Text[] labels = GetComponentsInChildren<TMP_Text>(true);
+            foreach (TMP_Text label in labels)
+            {
+                if (label != null && label.text == text)
+                {
+                    return label;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -800,30 +790,6 @@ namespace LifeRPG.UI.MainPanel
         /// </summary>
         private void AutoBindReferences()
         {
-            if (eventFillPanelView == null)
-            {
-                Transform fillRoot = FindChildByName(transform, "CurrentEventPerfab");
-                if (fillRoot == null)
-                {
-                    fillRoot = FindChildByName(transform, "CurrentEventPrefab");
-                }
-
-                if (fillRoot != null)
-                {
-                    eventFillPanelView = fillRoot.GetComponent<EventFillPanelView>();
-                    if (eventFillPanelView == null)
-                    {
-                        eventFillPanelView = fillRoot.gameObject.AddComponent<EventFillPanelView>();
-                    }
-                }
-            }
-
-            if (confirmButton == null)
-            {
-                Transform confirmRoot = FindChildByName(transform, "ConfirmButton");
-                confirmButton = confirmRoot != null ? confirmRoot.GetComponent<Button>() : null;
-            }
-
             if (fixedEventItems.Count == 0)
             {
                 EventListItemView[] existingItems = GetComponentsInChildren<EventListItemView>(true);

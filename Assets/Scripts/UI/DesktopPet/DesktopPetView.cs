@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -67,10 +68,10 @@ namespace LifeRPG.UI.DesktopPet
             petImage.sprite = placeholderPetSprite;
         }
 
-        private void DisableRootRaycastBlocker()
+        private void DisableRootRaycastBlocker() // 禁用掉背景的射线检测，没啥用
         {
-            Graphic rootGraphic = GetComponent<Graphic>();
-            if (rootGraphic != null && rootGraphic != petImage)
+            Graphic rootGraphic = GetComponent<Graphic>(); // 
+            if (rootGraphic != null && rootGraphic != petImage) // 
             {
                 // DesktopPetWindow 可以是全屏 RectTransform，但根节点背景不能吃掉主面板点击。
                 rootGraphic.raycastTarget = false;

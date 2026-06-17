@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using LifeRPG.UI.Warehouse;
+using UnityEngine;
 
 namespace LifeRPG.Core
 {
@@ -50,12 +51,62 @@ namespace LifeRPG.Core
 
         public void ShowWarehouse()
         {
+            ShowWarehouseTab(WarehouseTab.Clothes);
+        }
+
+        public void ShowEquipmentWarehouse()
+        {
+            ShowWarehouseTab(WarehouseTab.Clothes);
+        }
+
+        public void ShowEventWarehouse()
+        {
+            ShowWarehouseTab(WarehouseTab.Events);
+        }
+
+        public void ShowDimensionWarehouse()
+        {
+            ShowWarehouseTab(WarehouseTab.Dimensions);
+        }
+
+        private void ShowWarehouseTab(WarehouseTab tab)
+        {
             SetWindowVisible(warehouseWindow, true);
+
+            if (warehouseWindow == null)
+            {
+                Debug.LogWarning("UIManager 找不到仓库窗口，无法打开仓库。");
+                return;
+            }
+
+            WarehouseWindowController controller = warehouseWindow.GetComponent<WarehouseWindowController>();
+
+            controller.Open(tab);
         }
 
         public void HideWarehouse()
         {
             SetWindowVisible(warehouseWindow, false);
+        }
+
+
+
+        private GameObject FindLoadedObjectByName(string objectName)
+        {
+            Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
+            foreach (Transform candidate in transforms)
+            {
+                if (candidate == null
+                    || candidate.name != objectName
+                    || !candidate.gameObject.scene.IsValid())
+                {
+                    continue;
+                }
+
+                return candidate.gameObject;
+            }
+
+            return null;
         }
 
         private void SetWindowVisible(GameObject window, bool visible)

@@ -38,6 +38,9 @@ namespace LifeRPG.UI.MainPanel
                 view.OnEventSelected += HandleEventSelected;
                 view.OnConfirmClicked += HandleConfirmClicked;
                 view.OnCloseClicked += HandleCloseClicked;
+                view.OnOpenEquipmentWarehouseClicked += HandleOpenEquipmentWarehouseClicked;
+                view.OnOpenEventWarehouseClicked += HandleOpenEventWarehouseClicked;
+                view.OnOpenDimensionWarehouseClicked += HandleOpenDimensionWarehouseClicked;
             }
 
             RefreshPanel();
@@ -53,6 +56,9 @@ namespace LifeRPG.UI.MainPanel
             view.OnEventSelected -= HandleEventSelected;
             view.OnConfirmClicked -= HandleConfirmClicked;
             view.OnCloseClicked -= HandleCloseClicked;
+            view.OnOpenEquipmentWarehouseClicked -= HandleOpenEquipmentWarehouseClicked;
+            view.OnOpenEventWarehouseClicked -= HandleOpenEventWarehouseClicked;
+            view.OnOpenDimensionWarehouseClicked -= HandleOpenDimensionWarehouseClicked;
         }
 
         public void RefreshPanel()
@@ -143,6 +149,39 @@ namespace LifeRPG.UI.MainPanel
         private void HandleCloseClicked()
         {
             CloseMainPanel();
+        }
+
+        private void HandleOpenEquipmentWarehouseClicked()
+        {
+            if (uiManager == null)
+            {
+                Debug.LogWarning("MainPanelController 缺少 UIManager 引用，无法打开装备仓库。");
+                return;
+            }
+
+            uiManager.ShowEquipmentWarehouse();
+        }
+
+        private void HandleOpenEventWarehouseClicked()
+        {
+            if (uiManager == null)
+            {
+                Debug.LogWarning("MainPanelController 缺少 UIManager 引用，无法打开事件仓库。");
+                return;
+            }
+
+            uiManager.ShowEventWarehouse();
+        }
+
+        private void HandleOpenDimensionWarehouseClicked()
+        {
+            if (uiManager == null)
+            {
+                Debug.LogWarning("MainPanelController 缺少 UIManager 引用，无法打开六维仓库。");
+                return;
+            }
+
+            uiManager.ShowDimensionWarehouse();
         }
     }
 }
