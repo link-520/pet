@@ -10,10 +10,24 @@ namespace LifeRPG.UI.MainPanel
         [SerializeField] private Color currentLineColor = new Color(0.25f, 0.68f, 0.28f, 1f);
         [SerializeField] private Color targetLineColor = new Color(1f, 0.54f, 0.16f, 1f);
         [SerializeField] private Color gridColor = new Color(0.5f, 0.5f, 0.5f, 0.25f);
-        [SerializeField] private float maxValue = 10f;
+        [SerializeField] private float maxValue = 20f;
 
         private readonly float[] currentValues = new float[6];
         private readonly float[] targetValues = new float[6];
+
+        protected override void Awake()
+        {
+            base.Awake();
+            maxValue = 20f;
+        }
+
+#if UNITY_EDITOR
+        protected override void OnValidate()
+        {
+            base.OnValidate();
+            maxValue = 20f;
+        }
+#endif
 
         public void Refresh(DimensionSet currentDimensions, DimensionSet targetDimensions)
         {
@@ -62,7 +76,7 @@ namespace LifeRPG.UI.MainPanel
             Vector2[] points = new Vector2[6];
             for (int i = 0; i < points.Length; i++)
             {
-                float valueScale = values == null ? 1f : Mathf.Clamp01(values[i] / Mathf.Max(1f, maxValue));
+                float valueScale = values == null ? 1f : Mathf.Max(0f, values[i] / Mathf.Max(1f, maxValue));
                 float angle = Mathf.PI * 0.5f - i * Mathf.PI * 2f / points.Length;
                 points[i] = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius * valueScale;
             }
@@ -94,12 +108,19 @@ namespace LifeRPG.UI.MainPanel
                 Vector2 start = points[i];
                 Vector2 end = points[(i + 1) % points.Length];
                 DrawLine(vh, start, end, lineColor, width);
+                DrawPoint(vh, start, lineColor, width * 0.9f);
             }
         }
 
         private void DrawLine(VertexHelper vh, Vector2 start, Vector2 end, Color lineColor, float width)
         {
-            Vector2 direction = (end - start).normalized;
+            Vector2 delta = end - start;
+            if (delta.sqrMagnitude < 0.001f)
+            {
+                return;
+            }
+
+            Vector2 direction = delta.normalized;
             Vector2 normal = new Vector2(-direction.y, direction.x) * width * 0.5f;
             int index = vh.currentVertCount;
 
@@ -109,6 +130,25 @@ namespace LifeRPG.UI.MainPanel
             vh.AddVert(end - normal, lineColor, Vector2.zero);
             vh.AddTriangle(index, index + 1, index + 2);
             vh.AddTriangle(index, index + 2, index + 3);
+        }
+
+        private void DrawPoint(VertexHelper vh, Vector2 center, Color pointColor, float radius)
+        {
+            int startIndex = vh.currentVertCount;
+            int segments = 8;
+            vh.AddVert(center, pointColor, Vector2.zero);
+
+            for (int i = 0; i <= segments; i++)
+            {
+                float angle = Mathf.PI * 2f * i / segments;
+                Vector2 point = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+                vh.AddVert(point, pointColor, Vector2.zero);
+            }
+
+            for (int i = 1; i <= segments; i++)
+            {
+                vh.AddTriangle(startIndex, startIndex + i, startIndex + i + 1);
+            }
         }
     }
 }

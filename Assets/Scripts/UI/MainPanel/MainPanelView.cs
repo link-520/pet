@@ -39,14 +39,8 @@ namespace LifeRPG.UI.MainPanel
         [Header("窗口控制")]
         [SerializeField] private Button closeButton;
 
-        // [Header("窗口适配")]
-        // [SerializeField] private bool fitWindowToCanvas = true;
-        // [SerializeField] private Vector2 designWindowSize = new Vector2(1540f, 920f);
-        // [SerializeField] private Vector2 canvasPadding = new Vector2(80f, 80f);
-
         private readonly List<DimensionBarView> runtimeDimensionBars = new List<DimensionBarView>();
         private readonly List<EventListItemView> runtimeEventItems = new List<EventListItemView>();
-        private readonly List<EventListItemView> fixedEventItems = new List<EventListItemView>();
         private readonly Dictionary<string, Sprite> equipmentIconCache = new Dictionary<string, Sprite>();
         private EquipmentLibraryService equipmentLibraryService;
         private EventDefinition selectedEvent;
@@ -81,29 +75,15 @@ namespace LifeRPG.UI.MainPanel
             {
                 eventFillPanelView.OnCompletionChanged += RefreshConfirmButton;
             }
-
             HideSceneTemplates();
         }
 
         private void OnEnable()
         {
-            // FitWindowToCanvas();
         }
 
-        /// <summary>
-        /// 父级或自身尺寸变化时重新计算面板缩放。
-        /// </summary>
-        private void OnRectTransformDimensionsChange()
-        {
-        }
-
-        /// <summary>
-        /// 根据玩家数据和事件配置刷新完整主面板。
-        /// </summary>
         public void Refresh(PlayerData playerData, IReadOnlyList<EventDefinition> eventDefinitions)
         {
-            // AutoBindReferences();
-            // FitWindowToCanvas();
 
             if (playerData == null)
             {
@@ -117,45 +97,6 @@ namespace LifeRPG.UI.MainPanel
             RefreshEventFill(playerData, eventDefinitions);
         }
 
-        // /// <summary>
-        // /// 按设计尺寸和父级可用空间缩放并居中窗口。
-        // /// </summary>
-        // private void FitWindowToCanvas()
-        // {
-        //     if (!fitWindowToCanvas || fittingWindow)
-        //     {
-        //         return;
-        //     }
-
-        //     if (rectTransform == null)
-        //     {
-        //         rectTransform = transform as RectTransform;
-        //     }
-
-        //     RectTransform parentRect = rectTransform != null ? rectTransform.parent as RectTransform : null;
-        //     if (rectTransform == null || parentRect == null)
-        //     {
-        //         return;
-        //     }
-
-        //     Vector2 availableSize = parentRect.rect.size - canvasPadding * 2f;
-        //     if (availableSize.x <= 0f || availableSize.y <= 0f)
-        //     {
-        //         return;
-        //     }
-
-        //     float scale = Mathf.Min(1f, availableSize.x / designWindowSize.x, availableSize.y / designWindowSize.y);
-
-        //     fittingWindow = true;
-        //     rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-        //     rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        //     rectTransform.pivot = new Vector2(0.5f, 0.5f);
-        //     rectTransform.anchoredPosition = Vector2.zero;
-        //     rectTransform.sizeDelta = designWindowSize;
-        //     rectTransform.localScale = new Vector3(scale, scale, 1f);
-        //     fittingWindow = false;
-        // }
-
         private void RefreshPet(PlayerData playerData)
         {
             if (petImage != null && placeholderPetSprite != null)
@@ -163,10 +104,6 @@ namespace LifeRPG.UI.MainPanel
                 petImage.sprite = placeholderPetSprite;
             }
         }
-
-        /// <summary>
-        /// 刷新已解锁装备列表的文本显示。
-        /// </summary>
         private void RefreshEquipment(PlayerData playerData)
         {
             EquipmentType[] slotTypes =
@@ -187,36 +124,6 @@ namespace LifeRPG.UI.MainPanel
                 }
             }
 
-        }
-
-        private void EnsureFixedEquipmentSlotsBound()
-        {
-            fixedEquipmentSlots.RemoveAll(slot => slot == null);
-
-            if (fixedEquipmentSlots.Count >= 6)
-            {
-                return;
-            }
-
-            if (equipmentRoot == null)
-            {
-                equipmentRoot = FindChildByName(transform, "EquipmentArea");
-            }
-
-            if (equipmentRoot == null)
-            {
-                return;
-            }
-
-            foreach (Transform child in equipmentRoot)
-            {
-                if (child != null && child.name.StartsWith("EquipmentElement", StringComparison.Ordinal) && !fixedEquipmentSlots.Contains(child))
-                {
-                    fixedEquipmentSlots.Add(child);
-                }
-            }
-
-            fixedEquipmentSlots.Sort((left, right) => left.GetSiblingIndex().CompareTo(right.GetSiblingIndex()));
         }
 
         private void RefreshEquipmentSlot(Transform slot, EquipmentType type, PlayerData playerData)
@@ -404,10 +311,6 @@ namespace LifeRPG.UI.MainPanel
                     return type.ToString();
             }
         }
-
-        /// <summary>
-        /// 刷新六维条，优先使用运行时预制体，否则刷新固定条目。
-        /// </summary>
         private void RefreshDimensions(DimensionSet currentDimensions, DimensionSet targetDimensions, DimensionSet todayDimensions)
         {
             if (currentDimensions == null || targetDimensions == null || todayDimensions == null)
@@ -437,123 +340,37 @@ namespace LifeRPG.UI.MainPanel
             RefreshDimensionRadar(todayDimensions, targetDimensions);
         }
 
-        /// <summary>
-        /// 自动绑定场景中已经做好的六维条，避免固定列表为空时只显示 prefab 默认文案。
-        /// </summary>
-        private void EnsureFixedDimensionBarsBound(int expectedCount)
-        {
-            fixedDimensionBars.RemoveAll(bar => bar == null);
-
-            if (fixedDimensionBars.Count >= expectedCount)
-            {
-                return;
-            }
-
-            Transform searchRoot = dimensionRoot != null ? dimensionRoot : transform;
-            DimensionBarView[] existingBars = searchRoot.GetComponentsInChildren<DimensionBarView>(true);
-
-            foreach (DimensionBarView bar in existingBars)
-            {
-                if (bar != null && !fixedDimensionBars.Contains(bar))
-                {
-                    fixedDimensionBars.Add(bar);
-                }
-            }
-        }
-
         private void RefreshDimensionRadar(DimensionSet currentDimensions, DimensionSet targetDimensions)
         {
-            EnsureDimensionRadarChartBound();
-
             if (dimensionRadarChart != null)
             {
                 dimensionRadarChart.Refresh(currentDimensions, targetDimensions);
             }
         }
 
-        private void EnsureDimensionRadarChartBound()
-        {
-            if (dimensionRadarChart == null)
-            {
-                Debug.LogWarning("DimensionRadarChart 未绑定");
-            }
-
-        }
-
-        /// <summary>
-        /// 刷新事件列表，兼容固定条目、预制体列表和纯文本兜底。
-        /// </summary>
         private void RefreshEvents(IReadOnlyList<EventDefinition> eventDefinitions, PlayerData playerData)
         {
-            if (eventDefinitions == null)
+            if (eventDefinitions == null || eventItemPrefab == null || eventListRoot == null)
             {
                 return;
             }
 
-            fixedEventItems.RemoveAll(item => item == null);
-            if ((eventItemPrefab == null || eventListRoot == null) && fixedEventItems.Count > 0)
+            ClearRuntimeEvents();
+
+            foreach (EventDefinition definition in eventDefinitions)
             {
-                EnsureFixedEventItemsCount(eventDefinitions.Count);
+                EventListItemView item = Instantiate(eventItemPrefab, eventListRoot);
 
-                for (int i = 0; i < fixedEventItems.Count; i++)
-                {
-                    bool hasDefinition = i < eventDefinitions.Count;
-                    fixedEventItems[i].gameObject.SetActive(hasDefinition);
-                    fixedEventItems[i].OnSelected -= OnEventItemSelected;
+                item.gameObject.SetActive(true);
+                item.Refresh(definition, FindPlayerEventData(playerData, definition.Id));
+                item.SetSelected(playerData != null && definition.Id == playerData.SelectedEventId);
+                item.OnSelected += OnEventItemSelected;
 
-                    if (!hasDefinition)
-                    {
-                        continue;
-                    }
-
-                    EventDefinition definition = eventDefinitions[i];
-                    fixedEventItems[i].Refresh(definition, FindPlayerEventData(playerData, definition.Id));
-                    fixedEventItems[i].SetSelected(definition.Id == playerData.SelectedEventId);
-                    fixedEventItems[i].OnSelected += OnEventItemSelected;
-                }
-
-                return;
-            }
-
-            if (eventItemPrefab != null && eventListRoot != null)
-            {
-                ClearRuntimeEvents();
-
-                foreach (EventDefinition definition in eventDefinitions)
-                {
-                    EventListItemView item = Instantiate(eventItemPrefab, eventListRoot);
-                    item.gameObject.SetActive(true);
-                    item.Refresh(definition, FindPlayerEventData(playerData, definition.Id));
-                    item.SetSelected(definition.Id == playerData.SelectedEventId);
-                    item.OnSelected += OnEventItemSelected;
-                    runtimeEventItems.Add(item);
-                }
-
-                HideTemplateIfInRoot(eventItemPrefab.gameObject, eventListRoot);
-                return;
+                runtimeEventItems.Add(item);
             }
         }
 
-        private void EnsureFixedEventItemsCount(int expectedCount)
-        {
-            if (expectedCount <= 0 || fixedEventItems.Count == 0)
-            {
-                return;
-            }
 
-            EventListItemView template = fixedEventItems[0];
-            Transform parent = template.transform.parent;
-            while (fixedEventItems.Count < expectedCount)
-            {
-                EventListItemView item = Instantiate(template, parent);
-                item.name = $"EventElement ({fixedEventItems.Count})";
-                fixedEventItems.Add(item);
-            }
-        }
-
-        /// <summary>
-        /// 刷新当前选中事件和填写面板内容。
-        /// </summary>
         private void RefreshEventFill(PlayerData playerData, IReadOnlyList<EventDefinition> eventDefinitions)
         {
             selectedEvent = FindEventDefinition(eventDefinitions, playerData.SelectedEventId);
@@ -661,24 +478,23 @@ namespace LifeRPG.UI.MainPanel
         {
             foreach (EventListItemView item in runtimeEventItems)
             {
-                if (item != null)
+                if (item == null)
                 {
-                    item.OnSelected -= OnEventItemSelected;
-                    Destroy(item.gameObject);
+                    continue;
                 }
-            }
 
+                item.OnSelected -= OnEventItemSelected;
+                Destroy(item.gameObject);
+            }
             runtimeEventItems.Clear();
         }
 
-        /// <summary>
-        /// 隐藏场景中作为预制体模板使用的条目对象。
-        /// </summary>
+
         private void HideSceneTemplates()
         {
             if (eventItemPrefab != null && eventListRoot != null)
             {
-                HideTemplateIfInRoot(eventItemPrefab.gameObject, eventListRoot);
+                HideTemplateIfInRoot(null, eventListRoot);
             }
         }
 
@@ -770,62 +586,28 @@ namespace LifeRPG.UI.MainPanel
         }
 
         /// <summary>
-        /// 如果模板对象位于指定根节点下，则将其隐藏。
+        /// 删除 root 下面所有子对象，避免场景模板继续参与显示或布局。
         /// </summary>
         private void HideTemplateIfInRoot(GameObject templateObject, Transform root)
         {
-            if (templateObject == null || root == null)
+            if (root == null)
             {
                 return;
             }
 
-            if (templateObject.transform.IsChildOf(root))
+            for (int i = root.childCount - 1; i >= 0; i--)
             {
-                templateObject.SetActive(false);
-            }
-        }
-
-        /// <summary>
-        /// 自动补齐可从当前层级中推断出的 UI 引用。
-        /// </summary>
-        private void AutoBindReferences()
-        {
-            if (fixedEventItems.Count == 0)
-            {
-                EventListItemView[] existingItems = GetComponentsInChildren<EventListItemView>(true);
-                foreach (EventListItemView item in existingItems)
+                GameObject child = root.GetChild(i).gameObject;
+                if (Application.isPlaying)
                 {
-                    if (item != null && !fixedEventItems.Contains(item))
-                    {
-                        fixedEventItems.Add(item);
-                    }
+                    Destroy(child);
                 }
-
-                if (fixedEventItems.Count == 0)
+                else
                 {
-                    Transform[] children = GetComponentsInChildren<Transform>(true);
-                    foreach (Transform child in children)
-                    {
-                        if (!child.name.StartsWith("EventElement", StringComparison.Ordinal))
-                        {
-                            continue;
-                        }
-
-                        EventListItemView item = child.GetComponent<EventListItemView>();
-                        if (item == null)
-                        {
-                            item = child.gameObject.AddComponent<EventListItemView>();
-                        }
-
-                        fixedEventItems.Add(item);
-                    }
+                    DestroyImmediate(child);
                 }
             }
         }
-
-        /// <summary>
-        /// 在当前层级下按名称查找子节点。
-        /// </summary>
         private Transform FindChildByName(Transform root, string targetName)
         {
             if (root == null)
